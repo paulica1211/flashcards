@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <?!= HtmlService.createHtmlOutputFromFile('style').getContent(); ?>
+</head>
+<body>
+  <div>
+    <div id="questionArea">
+      <h3 id="questionNumber"></h3>
+      <h3 id="questionImportance"></h3>
+      <h3 id="questionYear" style="font-weight: normal; margin: 0;"></h3>
+      <h3 id="article" style="font-weight: normal; margin: 0"></h3>
+      <p id="question"></p>
+      <button class="answerButton" id="trueButton" onclick="selectAnswer('true')">True</button>
+      <button class="answerButton" id="falseButton" onclick="selectAnswer('false')">False</button>
+      <button class="answerButton" id="nextQuiz" onclick="nextQuestionAtQuestionarea()">Next</button>
+      <button class="answerButton" id="backQuiz" onclick="backQuestionAtQuestionarea()">Back</button>
+      <button id="settingButton" onclick="showSettingScreen()">Settings</button>
+    </div>
+    <div id="resultArea" style="display:none;">
+      <h3 id="result"></h3>
+      <p id="explanation"></p>
+      <p id="lawsentence"></p>
+      <p id="hyperlinkArea"></p>
+      <p id="time"></p>
+      <!-- "Next"ボタンは別の段に表示 -->
+      <button id="nextButton" onclick="nextQuestion()" style="display:block; margin-bottom: 10px;">Next</button>
+      
+      <!-- 他の4つのボタンは横に並べる -->
+      <div style="display: flex; gap: 10px;"> <!-- gapでボタンの間隔を調整 -->
+        <button id="nextButton" onclick="markImportant3()" style="display:inline-block;">3</button>
+        <button id="nextButton" onclick="markImportant2()" style="display:inline-block;">2</button>
+        <button id="nextButton" onclick="markImportant1()" style="display:inline-block;">1</button>
+        <button id="nextButton" onclick="markImportant0()" style="display:inline-block;">0</button>
+    </div>
+    </div>
+    <div id="settingScreen" style="display: none;">
+      <h2>Settings</h2>
+      <p>
+        <label for="sheetSelect">Select Sheet:</label>
+        <select id="sheetSelect"></select> <!-- シート選択用のドロップダウン -->
+      </p>
+      <p>
+        <label for="questionNumber">Select Question Number:</label>
+        <input type="number" id="selectNumber" min="1">
+        <button onclick="applySelectedSettings()">Apply</button>
+      </p>
+      <p>
+        <label for="importanceSelect">Select Importance:</label>
+        <select id="importanceSelect">
+          <option value="3">3 - High</option>
+          <option value="2">2 - Medium</option>
+          <option value="1">1 - Low</option>
+          <option value="0">0 - Undefined</option>
+        </select>
+        <button onclick="applyImportance()">Apply</button>
+      </p>  
+      <p>
+        <button onclick="backToQuiz()">Back to Quiz</button>
+      </p>
+    </div>
+  </div>
+
+  <?!= HtmlService.createHtmlOutputFromFile('quiz').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('setting').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('article').getContent(); ?>
+</body>
+</html>

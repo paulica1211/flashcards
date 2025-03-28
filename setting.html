@@ -1,0 +1,120 @@
+<script>
+
+// 現在の質問を「超重要」としてマークする関数
+function markImportant3() {
+  // サーバー側で質問を「重要」として記録
+  google.script.run.markImportant3(sheetName,questionNumber);
+}
+
+// 現在の質問を「重要」としてマークする関数
+function markImportant2() {
+  // サーバー側で質問を「重要」として記録
+  google.script.run.markImportant2(sheetName,questionNumber);
+}
+
+// 現在の質問を「少し重要」としてマークする関数
+function markImportant1() {
+  // サーバー側で質問を「重要」として記録
+  google.script.run.markImportant1(sheetName,questionNumber);
+}
+
+// 現在の質問を「普通」としてマークする関数
+function markImportant0() {
+  // サーバー側で質問を「重要」として記録
+  google.script.run.markImportant0(sheetName,questionNumber);
+}
+
+
+// 設定画面の初期化
+function initializeSettings() {
+  // サーバー側からシート名のリストを取得
+  google.script.run.withSuccessHandler(function(sheetNames) {
+    const sheetSelect = document.getElementById("sheetSelect");
+    sheetSelect.innerHTML = ""; // 初期化
+    // シート名をドロップダウンのオプションとして追加
+    sheetNames.forEach(sheetName => {
+      const option = document.createElement("option");
+      option.value = sheetName;
+      option.textContent = sheetName;
+      sheetSelect.appendChild(option);
+    });
+  }).getSheetNames();
+}
+
+// 選択されたシートと質問番号を適用
+function applySelectedSettings() {
+  const selectedSheet = document.getElementById("sheetSelect").value;
+  const selectedNumber = parseInt(document.getElementById("selectNumber").value);
+
+  if (selectedSheet && selectedNumber >= 1) {
+    google.script.run.withSuccessHandler(function() {
+      alert("Settings applied successfully!");
+      //backToQuiz();
+    }).saveSettings(selectedSheet, selectedNumber); // サーバー側で選択内容を保存
+
+    // グローバル変数に質問番号を設定
+    questionNumber = selectedNumber;
+    sheetName = selectedSheet;
+
+    // 選択された質問を取得して表示
+    fetchCurrentQuestion();
+
+    // 質問エリアを表示し、設定画面を非表示に切り替え
+    document.getElementById('questionArea').style.display = 'block';
+    document.getElementById('settingScreen').style.display = 'none';
+  } else if(!selectedNumber || isNaN(selectedNumber)) {
+    
+    google.script.run.withSuccessHandler(function(qnum) {
+        // 結果を受け取った後に何か処理したい場合
+        questionNumber = qnum;
+        sheetName = selectedSheet;
+
+        google.script.run.withSuccessHandler(function() {
+          alert("Settings applied successfully!");
+        }).saveSettings(sheetName, questionNumber); // サーバー側で選択内容を保存
+
+        // 選択された質問を取得して表示
+        fetchCurrentQuestion();
+
+        // 質問エリアを表示し、設定画面を非表示に切り替え
+        document.getElementById('questionArea').style.display = 'block';
+        document.getElementById('settingScreen').style.display = 'none';
+
+      }).withFailureHandler(function(error) {
+      // エラーハンドリング
+      console.error("エラーが発生しました:", error);
+      alert("質問番号の取得に失敗しました。もう一度お試しください。");
+      }).getQuestionNumber(selectedSheet);
+
+  } else {
+    alert("Please select a valid sheet and question number.");
+  }
+
+}
+
+function applyImportance() {
+  importanceLevel = document.getElementById('importanceSelect').value; // 重要度を取得
+
+  document.getElementById('questionArea').style.display = 'block';
+  document.getElementById('settingScreen').style.display = 'none';
+
+  /*
+  // 既存の getCurrentQuestion 関数を利用して、重要度をフィルタリングする
+  google.script.run.withSuccessHandler(function(question) {
+    // 結果が取得できたら、その質問を表示する
+    if (question) {
+      document.getElementById('questionNumber').innerText = "Question: " + question.question;
+      document.getElementById('question').innerText = question.answer;
+
+      // 質問エリアを表示し、設定画面を非表示に切り替え
+      document.getElementById('questionArea').style.display = 'block';
+      document.getElementById('settingScreen').style.display = 'none';
+    } else {
+      alert("No questions found for the selected importance.");
+    }
+  }).getCurrentQuestionByImportance(importanceLevel); // 既存の関数を利用して重要度に基づいた質問を取得
+*/
+
+}
+
+</script>

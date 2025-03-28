@@ -1,0 +1,204 @@
+<script>
+
+var startTime;
+var currentQuestion;
+var questionNumber;
+var sheetName
+var importanceLevel
+
+// クイズを初期化し、開始質問を表示する関数
+function initializeQuiz() {
+  // サーバー側で開始質問番号とシート名を取得
+  google.script.run.withSuccessHandler(function(startingInfo) {
+    // 開始質問番号とシート名を設定
+    questionNumber = startingInfo.questionNumber;
+    sheetName = startingInfo.sheetName; // 新たにグローバル変数として保存
+
+    // 初期の質問を取得して表示
+    fetchCurrentQuestion();
+  }).getStartingQuestionNumberAndSheet(); // 開始質問番号とシート名を取得するサーバー関数を呼び出し
+}
+
+// 現在の質問をサーバーから取得し、画面に表示する関数
+function fetchCurrentQuestion() {
+  // Google Apps Script の getCurrentQuestionFromSheet 関数を呼び出し
+  google.script.run.withSuccessHandler(function(question) {
+    // サーバーから取得した質問データを変数に格納
+    currentQuestion = question;
+
+    // 質問番号を画面に表示
+    document.getElementById("questionNumber").innerText = "Question " + questionNumber + " out of " + question.allQuestion;
+
+    // 質問の出題年を画面に表示
+    document.getElementById("questionYear").innerText = question.questionYear;
+
+    // 問題の重要度を画面に表示
+    document.getElementById("questionImportance").innerText = "Question importance: " + question.ofImportance;
+
+    // 条文番号を画面に表示
+    document.getElementById("article").innerText = question.article;
+
+    // 質問文を画面に表示（HTMLフォーマット対応）
+    // innerHTML を使用することで、リッチテキストやスタイル付きの質問文を表示可能
+    document.getElementById("question").innerHTML = question.question;
+
+    // 質問が表示された時点のタイムスタンプを記録
+    startTime = new Date().getTime();
+  }).getCurrentQuestionFromSheet(sheetName, questionNumber); // シート名と質問番号を指定して質問を取得
+}
+
+// ユーザーが選択した回答を処理する関数
+function selectAnswer(selectedAnswer) {
+  // 正解データを文字列として取得
+  var correctAnswer = currentQuestion.answer.toString();
+
+  // ユーザーの選択が正解かどうかを判定
+  var isCorrect = (selectedAnswer === correctAnswer);
+
+  // 経過時間（秒単位）を計算
+  var elapsedTime = ((new Date().getTime()) - startTime) / 1000;
+
+  // 質問エリアを非表示にし、結果エリアを表示
+  document.getElementById("questionArea").style.display = "none";
+  document.getElementById("resultArea").style.display = "block";
+
+  // 結果（正解または不正解）を画面に表示
+  document.getElementById("result").innerText = isCorrect ? "Correct!" : "Incorrect...";
+  document.getElementById("result").style.color = isCorrect ? "red" : "blue"; // 結果に応じた色を設定
+
+  // 解説文を画面に表示（HTML対応）
+  document.getElementById("explanation").innerHTML = currentQuestion.explanation;
+
+  // 回答時間を画面に表示（小数点以下2桁まで表示）
+  document.getElementById("time").innerText = "Time: " + elapsedTime.toFixed(2) + " seconds";
+
+  const links = [currentQuestion.linkM, currentQuestion.linkN, currentQuestion.linkO, currentQuestion.linkP];
+
+  const lawart = [currentQuestion.art1, currentQuestion.art2, currentQuestion.art3];
+
+  // ハイパーリンクを表示
+  displayHyperlinks(links);
+  displayTextButtons(lawart);
+
+  // サーバー側に回答の記録を送信（質問番号、正誤、経過時間を渡す）
+  google.script.run.recordAnswer(sheetName, questionNumber, isCorrect, elapsedTime);
+}
+
+// 次の質問を取得し、表示する関数
+function nextQuestion() {
+  // サーバー側で次の質問を取得
+  google.script.run.withSuccessHandler(function(nextQuestion) {
+    // 次の質問が存在しない場合、終了メッセージを表示してクイズを終了
+    if (!nextQuestion) {
+      alert("The quiz is finished."); // 終了メッセージを表示
+      google.script.host.close(); // クイズウィンドウを閉じる
+    } else {
+      // 次の質問が存在する場合、その質問データを現在の質問として設定
+      currentQuestion = nextQuestion;
+
+      document.getElementById("lawsentence").innerHTML = ""; // 内容を空にする
+
+      // 質問番号をインクリメント
+      questionNumber = nextQuestion.currentNum;
+
+      // 次の質問を画面に表示
+      document.getElementById("questionNumber").innerText = "Question " + questionNumber + " out of " + nextQuestion.allQuestion;
+    
+      // 質問の出題年を画面に表示
+      document.getElementById("questionYear").innerText = nextQuestion.questionYear;
+
+      // 問題の重要度を画面に表示
+      document.getElementById("questionImportance").innerText = "Question importance: " + nextQuestion.ofImportance;
+
+      // 条文番号を画面に表示
+      document.getElementById("article").innerText = nextQuestion.article;
+      document.getElementById("question").innerHTML = nextQuestion.question; // HTML形式で質問文を表示
+
+      // 質問エリアを表示し、結果エリアを非表示に切り替え
+      document.getElementById("questionArea").style.display = "block";
+      document.getElementById("resultArea").style.display = "none";
+
+      // 次の質問が表示された時点のタイムスタンプを記録
+      startTime = new Date().getTime();
+    }
+  }).goToNextQuestion(questionNumber,importanceLevel); // 現在の質問番号を渡して次の質問を取得
+}
+
+// 質問画面において次の質問を取得し、表示する関数
+function nextQuestionAtQuestionarea() {
+  // サーバー側で次の質問を取得
+  google.script.run.withSuccessHandler(function(nextQuestion) {
+    // 次の質問が存在しない場合、終了メッセージを表示してクイズを終了
+    if (!nextQuestion) {
+      alert("The quiz is finished."); // 終了メッセージを表示
+      google.script.host.close(); // クイズウィンドウを閉じる
+    } else {
+      // 次の質問が存在する場合、その質問データを現在の質問として設定
+      currentQuestion = nextQuestion;
+
+      // 質問番号をインクリメント
+      questionNumber = nextQuestion.currentNum;
+
+      // 次の質問を画面に表示
+      document.getElementById("questionNumber").innerText = "Question " + questionNumber + " out of " + nextQuestion.allQuestion;
+
+      // 質問の出題年を画面に表示
+      document.getElementById("questionYear").innerText = nextQuestion.questionYear;
+
+      // 問題の重要度を画面に表示
+      document.getElementById("questionImportance").innerText = "Question importance: " + nextQuestion.ofImportance;
+
+      // 条文番号を画面に表示
+      document.getElementById("article").innerText = nextQuestion.article;
+      document.getElementById("question").innerHTML = nextQuestion.question; // HTML形式で質問文を表示
+    }
+  }).goToNextQuestion(questionNumber,importanceLevel); // 現在の質問番号を渡して次の質問を取得
+}
+
+// 質問画面において前の質問を取得し、表示する関数
+function backQuestionAtQuestionarea() {
+  // サーバー側で次の質問を取得
+  google.script.run.withSuccessHandler(function(nextQuestion) {
+    // 次の質問が存在しない場合、終了メッセージを表示してクイズを終了
+    if (!nextQuestion) {
+      alert("The quiz is finished."); // 終了メッセージを表示
+      google.script.host.close(); // クイズウィンドウを閉じる
+    } else {
+      // 次の質問が存在する場合、その質問データを現在の質問として設定
+      currentQuestion = nextQuestion;
+
+      // 質問番号をデクリメント
+      questionNumber = nextQuestion.currentNum;
+
+      // 次の質問を画面に表示
+      document.getElementById("questionNumber").innerText = "Question " + questionNumber + " out of " + nextQuestion.allQuestion;
+
+      // 質問の出題年を画面に表示
+      document.getElementById("questionYear").innerText = nextQuestion.questionYear;
+
+      // 問題の重要度を画面に表示
+      document.getElementById("questionImportance").innerText = "Question importance: " + nextQuestion.ofImportance;
+
+      // 条文番号を画面に表示
+      document.getElementById("article").innerText = nextQuestion.article;
+      document.getElementById("question").innerHTML = nextQuestion.question; // HTML形式で質問文を表示
+    }
+  }).goToPreviousQuestion(questionNumber,importanceLevel); // 現在の質問番号を渡して次の質問を取得
+}
+
+// 設定画面を表示する際に初期化する
+function showSettingScreen() {
+  initializeSettings(); // 設定画面のシート名リストを更新
+  document.getElementById("settingScreen").style.display = "block";
+  document.getElementById("questionArea").style.display = "none";
+}
+
+// クイズ画面に戻る
+function backToQuiz() {
+  document.getElementById("settingScreen").style.display = "none";
+  document.getElementById("questionArea").style.display = "block";
+}
+
+initializeQuiz();
+
+</script>

@@ -1,0 +1,137 @@
+<script>
+
+// 統一されたボタン生成関数
+function createButton(text, className, onClickHandler) {
+  const button = document.createElement("button");
+  button.textContent = text;
+  button.className = className || "standard-button";
+  button.onclick = onClickHandler;
+  return button;
+}
+
+// 指定したIDの要素に内容を表示（HTML対応）
+function displayContent(id, content) {
+  const element = document.getElementById(id);
+  if (element) {
+    element.innerHTML = content;
+  }
+}
+
+// 指定された URL から XML データを取得し、パースして `textDisplayArea` に表示する関数
+function fetchAndDisplayXMLData(url) {
+  // fetch API を使用して XML データを取得
+  fetch(url)
+    .then(response => response.text())  // レスポンスをテキストとして取得
+    .then(xmlText => {
+      const parser = new DOMParser();  // XML パーサーを作成
+      const xmlDoc = parser.parseFromString(xmlText, "text/xml");  // 取得したテキストを XML に変換
+
+      // 記事タイトルを取得（存在しない場合は "No Title"）
+      let explanationHTML = `<h3>${xmlDoc.querySelector("ArticleTitle")?.textContent || "No Title"}</h3>`;
+
+      // すべての `<Paragraph>` 要素を取得し、ループ処理
+      xmlDoc.querySelectorAll("Paragraph").forEach(paragraph => {
+        // `<ParagraphNum>` がある場合、その番号を取得（ない場合は "No number"）
+        let paragraphNum = paragraph.querySelector("ParagraphNum")?.textContent || "No number";
+        explanationHTML += `<p><strong>Paragraph ${paragraphNum}:</strong>`;
+
+        // `<ParagraphSentence>` 内の `<Sentence>` を取得してループ処理
+        paragraph.querySelectorAll("ParagraphSentence > Sentence").forEach(sentence => {
+          let functionType = sentence.getAttribute("Function");  // `Function` 属性を取得（例: proviso）
+          // `Function="proviso"` の場合、青色で表示
+          explanationHTML += `<br>${functionType === "proviso" ? `<span style="color: blue;">${sentence.textContent}</span>` : sentence.textContent}`;
+        });
+
+        // `<Item>` がある場合、それを処理
+        paragraph.querySelectorAll("Item").forEach(item => {
+          let itemTitle = item.querySelector("ItemTitle")?.textContent;  // `<ItemTitle>` を取得
+          if (itemTitle) explanationHTML += `<br><strong>Item: ${itemTitle}</strong>`;  // `ItemTitle` を表示
+
+          // `<ItemSentence>` 内の `<Sentence>` を取得してループ処理
+          item.querySelectorAll("ItemSentence > Sentence").forEach(itemSentence => {
+            explanationHTML += `<br>${itemSentence.textContent}`;
+          });
+        });
+
+        explanationHTML += `</p>`;  // 段落を閉じる
+      });
+
+      // `textDisplayArea` にデータを表示
+      const displayArea = document.getElementById("textDisplayArea");
+      if (displayArea) {
+        displayArea.innerHTML = explanationHTML;  // HTML コンテンツを挿入
+      }
+
+      // 「元に戻す」ボタンを作成し、`displayArea` に追加
+      const resetButton = createButton("元に戻す", "standard-button reset-button", () => displayArea.innerHTML = "");
+      displayArea.appendChild(resetButton);
+    })
+    .catch(error => {
+      console.error("Error fetching XML data:", error);  // エラーをコンソールに出力
+      document.getElementById("textDisplayArea").innerHTML = "Failed to load the reference data.";  // エラーメッセージを表示
+    });
+}
+
+
+// ハイパーリンクを表示（統一された処理）
+function displayHyperlinks(links) {
+  const hyperlinkArea = document.getElementById("hyperlinkArea");
+  hyperlinkArea.innerHTML = '';
+
+  links.forEach(link => {
+    if (link) {
+      const regex = /HYPERLINK\(["']([^"']+)["'],\s*["']([^"']+)["']\)/;
+      const matches = link.match(regex);
+      if (matches) {
+        const url = matches[1];
+        const text = matches[2];
+
+        const linkButton = createButton(text, "standard-button", () => fetchAndDisplayXMLData(url));
+        hyperlinkArea.appendChild(linkButton);
+      }
+    }
+  });
+}
+
+// テキストボタンを表示し、クリック時にデータを取得・表示する関数
+function displayTextButtons(texts) {
+  // `lawsentence` 要素を取得し、既存の内容をクリア
+  const textArea = document.getElementById("lawsentence");
+  textArea.innerHTML = '';
+
+  // 表示エリア (`textDisplayArea`) を作成
+  const displayArea = document.createElement("div");
+  displayArea.id = "textDisplayArea";
+  displayArea.style.marginTop = "10px";  // 上の余白を設定
+  displayArea.style.padding = "10px";    // 内側の余白を設定
+  displayArea.style.border = "1px solid #ccc";  // 枠線を追加
+  displayArea.style.minHeight = "20px"; // 高さが 0 にならないように最小高さを確保
+  textArea.appendChild(displayArea); // `lawsentence` 内に追加
+
+  // `texts` 配列をループ処理してボタンを作成
+  texts.forEach((text, index) => {
+    if (text) {
+      // `text` の形式を解析（"シート名_行番号" の形式を想定）
+      const regex = /^(.+?)_(.+)$/;  // 任意の文字列 + "_" + 数字
+      const match = text.match(regex);
+      if (!match) return;  // マッチしない場合はスキップ
+
+      // シート名と行番号を取得
+      const sheetName = match[1];  // シート名
+      const rowIndex = parseInt(match[2], 10); // 行番号（整数に変換）
+
+      // ボタンを作成（統一された `createButton` 関数を利用）
+      const textButton = createButton(`Show Text ${index + 1}`, "standard-button", () => {
+        // Google Apps Script の `pickArticle` を呼び出し、取得した結果を `displayArea` に表示
+        google.script.run.withSuccessHandler(result => displayArea.innerHTML = result).pickArticle("1p64rMbsJWT7vw5rD4JGAqKsy5US4S4sQCSGxF7NOhUg",sheetName, rowIndex);
+      });
+
+      // ボタンを `lawsentence` 内に追加
+      textArea.appendChild(textButton);
+    }
+  });
+}
+
+
+
+</script>
