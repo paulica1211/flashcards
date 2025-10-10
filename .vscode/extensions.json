@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "adelphes.android-dev-ext",
+    "msjsdiag.debugger-for-chrome",
+    "vscjava.vscode-java-pack",
+    "vscjava.vscode-gradle"
+  ]
+}

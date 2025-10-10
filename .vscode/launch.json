@@ -1,0 +1,39 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "android",
+      "request": "launch",
+      "name": "Android: Launch App",
+      "appSrcRoot": "${workspaceFolder}/android/app/src/main",
+      "apkFile": "${workspaceFolder}/android/app/build/outputs/apk/debug/app-debug.apk",
+      "adbPath": "C:\\Users\\hp\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+      "preLaunchTask": "Build Debug APK"
+    },
+    {
+      "type": "android",
+      "request": "attach",
+      "name": "Android: Attach Debugger",
+      "appSrcRoot": "${workspaceFolder}/android/app/src/main",
+      "adbPath": "C:\\Users\\hp\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+      "processId": "${command:pickAndroidProcess}"
+    },
+    {
+      "type": "chrome",
+      "request": "attach",
+      "name": "Chrome: Attach to WebView",
+      "port": 9222,
+      "webRoot": "${workspaceFolder}",
+      "urlFilter": "*script.google.com*",
+      "trace": true
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "ADB Logcat Viewer",
+      "program": "${workspaceFolder}/.vscode/logcat-viewer.js",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    }
+  ]
+}

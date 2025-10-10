@@ -1,3 +1,5 @@
+//testtesttest
+
 
 function doGet() {
   return HtmlService.createTemplateFromFile('Index')
@@ -63,10 +65,10 @@ function getQuestionNumber(selectedSheetName) {
     currentQuestionNumber = settingSheet.getRange('A3').getValue();
   } else if (selectedSheetName === "条約") {
     currentQuestionNumber = settingSheet.getRange('A4').getValue();
-  } else if (startingSheetName === "著作") {
+  } else if (selectedSheetName === "著作") {
     currentQuestionNumber = settingSheet.getRange('A5').getValue();
-  } else if (startingSheetName === "不競") {
-    currentQuestionNumber = settingSheet.getRange('A6').getValue();    
+  } else if (selectedSheetName === "不競") {
+    currentQuestionNumber = settingSheet.getRange('A6').getValue();
   } else {
     throw new Error("Unknown sheet name: " + selectedSheetName); // 未知のシート名に対するエラー
   }
@@ -138,12 +140,7 @@ function getCurrentQuestionFromSheet(sheetName, questionNumber) {
 }
 
 // 現在の質問番号を基に次の質問を取得する関数
-function goToNextQuestion(currentQuestionNumber, importanceLevel) {
-
- // 「Setting」シートを取得
-  var settingSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Setting');
-  // B1セルに記録されている開始シートを取得
-  var sheetName = settingSheet.getRange('B1').getValue();
+function goToNextQuestion(sheetName, currentQuestionNumber, importanceLevel) {
   // アクティブなスプレッドシートとアクティブシートを取得
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
 
@@ -170,12 +167,7 @@ function goToNextQuestion(currentQuestionNumber, importanceLevel) {
 }
 
 // 現在の質問番号を基に前の質問を取得する関数
-function goToPreviousQuestion(currentQuestionNumber, importanceLevel) {
-
- // 「Setting」シートを取得
-  var settingSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Setting');
-  // B1セルに記録されている開始シートを取得
-  var sheetName = settingSheet.getRange('B1').getValue();
+function goToPreviousQuestion(sheetName, currentQuestionNumber, importanceLevel) {
   // アクティブなスプレッドシートと指定シートを取得
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
 

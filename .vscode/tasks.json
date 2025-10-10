@@ -1,0 +1,103 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build Debug APK",
+      "type": "shell",
+      "command": "${workspaceFolder}/android/gradlew.bat",
+      "args": ["assembleDebug"],
+      "options": {
+        "cwd": "${workspaceFolder}/android"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Install APK on Device",
+      "type": "shell",
+      "command": "bash",
+      "args": ["${workspaceFolder}/android/install.sh"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Launch App on Device",
+      "type": "shell",
+      "command": "bash",
+      "args": ["${workspaceFolder}/android/launch.sh"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Build and Deploy",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Build Debug APK",
+        "Install APK on Device",
+        "Launch App on Device"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Start Logcat",
+      "type": "shell",
+      "command": "/mnt/c/Users/hp/AppData/Local/Android/Sdk/platform-tools/adb.exe",
+      "args": [
+        "logcat",
+        "-s",
+        "GasQuiz:*"
+      ],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": false
+      }
+    },
+    {
+      "label": "Clear Logcat",
+      "type": "shell",
+      "command": "/mnt/c/Users/hp/AppData/Local/Android/Sdk/platform-tools/adb.exe",
+      "args": [
+        "logcat",
+        "-c"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent"
+      }
+    },
+    {
+      "label": "Check Connected Devices",
+      "type": "shell",
+      "command": "/mnt/c/Users/hp/AppData/Local/Android/Sdk/platform-tools/adb.exe",
+      "args": [
+        "devices",
+        "-l"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    }
+  ]
+}

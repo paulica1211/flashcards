@@ -1,47 +1,106 @@
 <style>
-  /* スマートフォン用のフォントサイズ */
+  /* Base styles */
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    margin: 0;
+    padding: 16px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f5f5f5;
+  }
+
+  /* Typography - Mobile optimized */
   @media only screen and (max-width: 1080px) {
     body {
-      font-size: 18px;
+      font-size: 16px;
+      padding: 12px;
     }
     h2 {
-      font-size: 28px;
+      font-size: 24px;
+      margin: 16px 0 12px 0;
     }
     h3 {
-      font-size: 24px;
+      font-size: 20px;
+      margin: 12px 0 8px 0;
     }
     p {
-      font-size: 18px;
-      word-wrap: break-word; /* 単語単位で折り返し */
-      white-space: normal; /* 自然に折り返す */
+      font-size: 16px;
+      margin: 8px 0;
+      word-wrap: break-word;
+      white-space: normal;
+      line-height: 1.8;
     }
   }
 
-  /* 共通のボタンスタイル */
-  button {
-    font-size: 28px;
-    padding: 15px 30px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    margin: 10px;
+  /* Container styles */
+  #questionArea, #resultArea, #settingScreen {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-bottom: 16px;
   }
 
-  /* True/Falseボタンのスタイル */
+  /* Button base styles - optimized for touch */
+  button {
+    font-size: 18px;
+    padding: 14px 24px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    margin: 6px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    min-height: 48px; /* Touch-friendly minimum */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  button:active {
+    transform: scale(0.98);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  }
+
+  /* Answer buttons (True/False) - Full width on mobile */
   .answerButton {
     background-color: #28a745;
     color: white;
+    width: 100%;
+    max-width: 400px;
+    font-size: 20px;
+    padding: 16px;
+    margin: 8px 0;
   }
 
   .answerButton:hover {
     background-color: #218838;
   }
 
-  /* Nextボタン・MarkImportantボタンのスタイル */
+  .answerButton:active {
+    background-color: #1e7e34;
+  }
+
+  /* Navigation buttons (Next/Back) in flex container */
+  #questionArea .answerButton:nth-of-type(3),
+  #questionArea .answerButton:nth-of-type(4) {
+    width: calc(50% - 8px);
+    max-width: none;
+    display: inline-block;
+  }
+
+  /* Next button in result area */
   #nextButton {
     background-color: #007bff;
     color: white;
     transition: background-color 0.3s;
+    width: 100%;
+    max-width: 400px;
+    font-size: 20px;
+    padding: 16px;
   }
 
   #nextButton:hover {
@@ -49,31 +108,188 @@
   }
 
   #nextButton:active {
-    background-color: #003366;
+    background-color: #003d82;
   }
 
-  /* ボタンの共通スタイル */
+  /* Importance buttons container - responsive grid */
+  #resultArea > div {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-top: 12px;
+    width: 100%;
+  }
+
+  #resultArea > div button {
+    margin: 0;
+    padding: 14px 8px;
+    font-size: 18px;
+    min-width: 0;
+    width: 100%;
+  }
+
+  /* Settings button */
+  #settingButton {
+    background-color: #6c757d;
+    color: white;
+    width: 100%;
+    max-width: 200px;
+    margin-top: 16px;
+    font-size: 16px;
+  }
+
+  #settingButton:hover {
+    background-color: #5a6268;
+  }
+
+  /* Settings screen styles */
+  #settingScreen label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #555;
+  }
+
+  #settingScreen select,
+  #settingScreen input[type="number"] {
+    width: 100%;
+    max-width: 400px;
+    padding: 12px;
+    font-size: 16px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+
+  #settingScreen button {
+    background-color: #007bff;
+    color: white;
+    width: 100%;
+    max-width: 400px;
+  }
+
+  #settingScreen button:hover {
+    background-color: #0056b3;
+  }
+
+  /* Standard button class */
   .standard-button {
-    font-size: 20px;
-    padding: 10px 20px;
-    margin: 5px;
+    font-size: 18px;
+    padding: 12px 20px;
+    margin: 6px;
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
     cursor: pointer;
     background-color: #007bff;
     color: white;
     transition: background-color 0.3s;
+    min-height: 48px;
   }
 
   .standard-button:hover {
     background-color: #0056b3;
   }
 
+  .standard-button:active {
+    background-color: #003d82;
+  }
+
+  /* Reset button variant */
   .reset-button {
     background-color: #dc3545;
   }
 
   .reset-button:hover {
     background-color: #c82333;
+  }
+
+  .reset-button:active {
+    background-color: #bd2130;
+  }
+
+  /* Hyperlink area styling */
+  #hyperlinkArea {
+    margin: 12px 0;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+  }
+
+  #hyperlinkArea a {
+    color: #007bff;
+    text-decoration: none;
+    padding: 8px 12px;
+    display: inline-block;
+    margin: 4px;
+    border-radius: 6px;
+    background: white;
+    border: 1px solid #007bff;
+    transition: all 0.2s;
+  }
+
+  #hyperlinkArea a:hover {
+    background: #007bff;
+    color: white;
+  }
+
+  /* Responsive adjustments for very small screens */
+  @media only screen and (max-width: 480px) {
+    body {
+      padding: 8px;
+    }
+
+    #questionArea, #resultArea, #settingScreen {
+      padding: 16px;
+      border-radius: 8px;
+    }
+
+    button {
+      font-size: 16px;
+      padding: 12px 16px;
+      margin: 4px 0;
+    }
+
+    .answerButton {
+      font-size: 18px;
+    }
+
+    #resultArea > div {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    #resultArea > div button {
+      font-size: 16px;
+      padding: 12px 4px;
+    }
+  }
+
+  /* Loading/transition animations */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  #questionArea, #resultArea {
+    animation: fadeIn 0.3s ease;
+  }
+
+  /* Focus styles for accessibility */
+  button:focus {
+    outline: 3px solid #80bdff;
+    outline-offset: 2px;
+  }
+
+  select:focus,
+  input:focus {
+    border-color: #80bdff;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
   }
 </style>

@@ -1,0 +1,117 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build Debug APK",
+            "type": "shell",
+            "command": ".\\gradlew.bat",
+            "args": [
+                "assembleDebug"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Install Debug APK",
+            "type": "shell",
+            "command": "adb",
+            "args": [
+                "install",
+                "-r",
+                "app\\build\\outputs\\apk\\debug\\app-debug.apk"
+            ],
+            "dependsOn": ["Build Debug APK"],
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Launch App",
+            "type": "shell",
+            "command": "adb",
+            "args": [
+                "shell",
+                "am",
+                "start",
+                "-n",
+                "com.gasquiz/.MainActivity"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Get Process ID",
+            "type": "shell",
+            "command": "adb",
+            "args": [
+                "shell",
+                "ps | grep com.gasquiz"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Build and Install App",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Build Debug APK",
+                "Install Debug APK",
+                "Launch App"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Stop ADB Forward",
+            "type": "shell",
+            "command": "adb",
+            "args": [
+                "forward",
+                "--remove",
+                "tcp:5005"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Start Logcat",
+            "type": "shell",
+            "command": "adb",
+            "args": [
+                "logcat",
+                "-s",
+                "MainActivity:*",
+                "QuizActivity:*",
+                "SettingsActivity:*",
+                "okhttp.OkHttpClient:*"
+            ],
+            "isBackground": true,
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "dedicated"
+            }
+        },
+        {
+            "label": "Clear Logcat",
+            "type": "shell",
+            "command": "adb",
+            "args": [
+                "logcat",
+                "-c"
+            ],
+            "problemMatcher": []
+        }
+    ]
+}

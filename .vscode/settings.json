@@ -1,0 +1,17 @@
+{
+  "android.adbPath": "C:\\Users\\hp\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+  "android.sdkPath": "C:\\Users\\hp\\AppData\\Local\\Android\\Sdk",
+  "java.configuration.updateBuildConfiguration": "manual",
+  "files.exclude": {
+    "**/.gradle": true,
+    "**/build": true,
+    "**/.idea": true
+  },
+  "files.watcherExclude": {
+    "**/.gradle/**": true,
+    "**/build/**": true
+  },
+  "terminal.integrated.env.windows": {
+    "ANDROID_HOME": "C:\\Users\\hp\\AppData\\Local\\Android\\Sdk"
+  }
+}
