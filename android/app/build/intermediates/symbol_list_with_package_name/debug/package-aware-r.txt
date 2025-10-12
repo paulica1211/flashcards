@@ -3134,6 +3134,7 @@ id clear_text
 id clip_horizontal
 id clip_vertical
 id clockwise
+id closeExplanationButton
 id closest
 id collapseActionView
 id compress
@@ -3196,7 +3197,15 @@ id enterAlwaysCollapsed
 id exitUntilCollapsed
 id expand_activities_button
 id expanded_menu
+id explanationArticleText
+id explanationCard
+id explanationContentText
+id explanationImportanceText
+id explanationLinksContainer
+id explanationQuestionNumberText
+id explanationQuestionText
 id explanationText
+id explanationYearText
 id fade
 id falseButton
 id fill
@@ -3672,6 +3681,7 @@ layout design_navigation_menu
 layout design_navigation_menu_item
 layout design_text_input_end_icon
 layout design_text_input_start_icon
+layout layout_explanation
 layout layout_result
 layout m3_alert_dialog
 layout m3_alert_dialog_actions

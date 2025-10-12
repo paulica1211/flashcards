@@ -6,6 +6,8 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.text.Html;
 import android.util.Log;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -60,6 +62,17 @@ public class QuizActivity extends AppCompatActivity {
     private MaterialButton importance1Button;
     private MaterialButton importance0Button;
 
+    // Explanation views (for showing previous question explanation)
+    private CardView explanationCard;
+    private TextView explanationQuestionNumberText;
+    private TextView explanationImportanceText;
+    private TextView explanationYearText;
+    private TextView explanationArticleText;
+    private TextView explanationQuestionText;
+    private TextView explanationContentText;
+    private LinearLayout explanationLinksContainer;
+    private MaterialButton closeExplanationButton;
+
     // Loading
     private ProgressBar progressBar;
 
@@ -79,6 +92,13 @@ public class QuizActivity extends AppCompatActivity {
     private boolean lastAnswerCorrect = false;
     private double lastAnswerTime = 0.0;
 
+    // Gesture detector for swipe
+    private GestureDetector gestureDetector;
+
+    // Track if we're showing a temporary previous result (from swipe)
+    private boolean showingTemporaryResult = false;
+    private Question savedCurrentQuestion = null;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -86,6 +106,7 @@ public class QuizActivity extends AppCompatActivity {
 
         initViews();
         setupClickListeners();
+        setupGestureDetector();
 
         apiService = ApiClient.getApiService();
 
@@ -103,6 +124,17 @@ public class QuizActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
+        // If we're showing the explanation screen, go back to question view
+        if (explanationCard.getVisibility() == View.VISIBLE) {
+            if (savedCurrentQuestion != null) {
+                currentQuestion = savedCurrentQuestion;
+                savedCurrentQuestion = null;
+            }
+            showingTemporaryResult = false;
+            showQuestionView();
+            return;
+        }
+
         // If we're showing the answer review screen, go back to question view
         if (resultCard.getVisibility() == View.VISIBLE) {
             showQuestionView();
@@ -146,6 +178,17 @@ public class QuizActivity extends AppCompatActivity {
         importance1Button = findViewById(R.id.importance1Button);
         importance0Button = findViewById(R.id.importance0Button);
 
+        // Explanation views
+        explanationCard = findViewById(R.id.explanationCard);
+        explanationQuestionNumberText = findViewById(R.id.explanationQuestionNumberText);
+        explanationImportanceText = findViewById(R.id.explanationImportanceText);
+        explanationYearText = findViewById(R.id.explanationYearText);
+        explanationArticleText = findViewById(R.id.explanationArticleText);
+        explanationQuestionText = findViewById(R.id.explanationQuestionText);
+        explanationContentText = findViewById(R.id.explanationContentText);
+        explanationLinksContainer = findViewById(R.id.explanationLinksContainer);
+        closeExplanationButton = findViewById(R.id.closeExplanationButton);
+
         // Loading
         progressBar = findViewById(R.id.progressBar);
     }
@@ -167,10 +210,121 @@ public class QuizActivity extends AppCompatActivity {
         importance1Button.setOnClickListener(v -> markImportance(1));
         importance0Button.setOnClickListener(v -> markImportance(0));
 
+        closeExplanationButton.setOnClickListener(v -> {
+            // Restore current question and go back to question view
+            if (savedCurrentQuestion != null) {
+                currentQuestion = savedCurrentQuestion;
+                savedCurrentQuestion = null;
+            }
+            showingTemporaryResult = false;
+            showQuestionView();
+        });
+
         settingsButton.setOnClickListener(v -> {
             Intent intent = new Intent(QuizActivity.this, SettingsActivity.class);
             startActivity(intent);
         });
+    }
+
+    private void setupGestureDetector() {
+        gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
+            private static final int SWIPE_THRESHOLD = 100;
+            private static final int SWIPE_VELOCITY_THRESHOLD = 100;
+
+            @Override
+            public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+                float diffX = e2.getX() - e1.getX();
+                float diffY = e2.getY() - e1.getY();
+
+                Log.d(TAG, "onFling detected: diffX=" + diffX + ", diffY=" + diffY + ", velocityX=" + velocityX);
+
+                if (Math.abs(diffX) > Math.abs(diffY)) {
+                    if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
+                        if (diffX > 0) {
+                            // Swipe right - show previous result
+                            Log.d(TAG, "Swipe right detected!");
+                            onSwipeRight();
+                        } else {
+                            // Swipe left - go to next question
+                            Log.d(TAG, "Swipe left detected!");
+                            onSwipeLeft();
+                        }
+                        return true;
+                    }
+                }
+                return false;
+            }
+        });
+
+        // Attach gesture detector to question, result, and explanation containers
+        View.OnTouchListener touchListener = (v, event) -> {
+            gestureDetector.onTouchEvent(event);
+            return false; // Allow child views to handle touches too
+        };
+        questionContainer.setOnTouchListener(touchListener);
+        resultCard.setOnTouchListener(touchListener);
+        explanationCard.setOnTouchListener(touchListener);
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        gestureDetector.onTouchEvent(event);
+        return super.dispatchTouchEvent(event);
+    }
+
+    private void onSwipeRight() {
+        // Swipe right: show previous question's explanation (i-1) without changing current question number
+        if (currentQuestionNumber <= 1) {
+            Toast.makeText(this, "No previous question", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        int previousQuestionNum = currentQuestionNumber - 1;
+        Log.d(TAG, "Swipe right: loading question " + previousQuestionNum + " explanation");
+
+        showLoading(true);
+        apiService.getQuestion("getQuestion", currentSheetName, previousQuestionNum)
+                .enqueue(new Callback<Question>() {
+                    @Override
+                    public void onResponse(Call<Question> call, Response<Question> response) {
+                        showLoading(false);
+                        if (response.isSuccessful() && response.body() != null) {
+                            Question prevQuestion = response.body();
+                            // Save current question before showing explanation
+                            savedCurrentQuestion = currentQuestion;
+                            showingTemporaryResult = true;
+                            // Show explanation view
+                            showExplanation(prevQuestion);
+                        } else {
+                            Toast.makeText(QuizActivity.this, "Failed to load previous question", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<Question> call, Throwable t) {
+                        showLoading(false);
+                        Toast.makeText(QuizActivity.this, "Network error", Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    private void onSwipeLeft() {
+        // Swipe left: return to current question or move to next question
+        if (explanationCard.getVisibility() == View.VISIBLE) {
+            // If showing explanation, restore current question
+            Log.d(TAG, "Swipe left: restoring current question from explanation");
+            if (savedCurrentQuestion != null) {
+                currentQuestion = savedCurrentQuestion;
+                savedCurrentQuestion = null;
+            }
+            showingTemporaryResult = false;
+            showQuestionView();
+        } else if (resultCard.getVisibility() == View.VISIBLE) {
+            // If showing result for current question, go to next question
+            Log.d(TAG, "Swipe left: going to next question");
+            showQuestionView();
+            loadNextQuestion();
+        }
     }
 
     private void loadStartingInfo() {
@@ -444,6 +598,10 @@ public class QuizActivity extends AppCompatActivity {
     private void selectAnswer(String answer) {
         if (currentQuestion == null) return;
 
+        // Reset temporary result flag when answering
+        showingTemporaryResult = false;
+        savedCurrentQuestion = null;
+
         long elapsedTime = System.currentTimeMillis() - startTime;
         double seconds = elapsedTime / 1000.0;
 
@@ -474,10 +632,25 @@ public class QuizActivity extends AppCompatActivity {
         // Hide question, show result
         questionContainer.setVisibility(View.GONE);
         resultCard.setVisibility(View.VISIBLE);
+        explanationCard.setVisibility(View.GONE);
 
-        // Display result
+        // Display result with icon
         resultText.setText(isCorrect ? "Correct!" : "Incorrect...");
         resultText.setTextColor(getColor(isCorrect ? R.color.primary : android.R.color.holo_red_light));
+
+        // Set icon based on correctness
+        if (isCorrect) {
+            // Checkmark icon for correct answer
+            resultText.setCompoundDrawablesWithIntrinsicBounds(
+                android.R.drawable.checkbox_on_background, 0, 0, 0
+            );
+        } else {
+            // X icon for incorrect answer
+            resultText.setCompoundDrawablesWithIntrinsicBounds(
+                android.R.drawable.ic_delete, 0, 0, 0
+            );
+        }
+
         timeText.setText(String.format("Time: %.2f seconds", seconds));
         explanationText.setText(Html.fromHtml(currentQuestion.getExplanation(), Html.FROM_HTML_MODE_LEGACY));
 
@@ -523,9 +696,51 @@ public class QuizActivity extends AppCompatActivity {
                 });
     }
 
+    private void showExplanation(Question question) {
+        // Hide other views, show explanation
+        questionContainer.setVisibility(View.GONE);
+        resultCard.setVisibility(View.GONE);
+        explanationCard.setVisibility(View.VISIBLE);
+
+        // Display question details
+        explanationQuestionNumberText.setText("Question " + question.getCurrentNum() + " of " + question.getAllQuestion());
+        explanationImportanceText.setText("Importance: " + question.getOfImportance());
+        explanationYearText.setText(question.getQuestionYear());
+        explanationArticleText.setText(question.getArticle());
+        explanationQuestionText.setText(Html.fromHtml(question.getQuestion(), Html.FROM_HTML_MODE_LEGACY));
+        explanationContentText.setText(Html.fromHtml(question.getExplanation(), Html.FROM_HTML_MODE_LEGACY));
+
+        // Display links
+        displayExplanationLinks(question);
+    }
+
+    private void displayExplanationLinks(Question question) {
+        explanationLinksContainer.removeAllViews();
+
+        String[] links = {
+                question.getLinkM(),
+                question.getLinkN(),
+                question.getLinkO(),
+                question.getLinkP()
+        };
+
+        for (String link : links) {
+            if (link != null && !link.isEmpty() && link.contains("http")) {
+                MaterialButton linkButton = new MaterialButton(this);
+                linkButton.setText("View Reference");
+                linkButton.setOnClickListener(v -> {
+                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(link));
+                    startActivity(intent);
+                });
+                explanationLinksContainer.addView(linkButton);
+            }
+        }
+    }
+
     private void showQuestionView() {
         questionContainer.setVisibility(View.VISIBLE);
         resultCard.setVisibility(View.GONE);
+        explanationCard.setVisibility(View.GONE);
         // Don't clear navigation state here - let the caller decide
     }
 

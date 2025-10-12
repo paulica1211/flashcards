@@ -155,6 +155,11 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"/>
 
+        <include
+            layout="@layout/layout_explanation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
         </FrameLayout>
 
     </androidx.core.widget.NestedScrollView>

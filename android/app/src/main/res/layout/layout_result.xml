@@ -29,7 +29,8 @@
                 android:textStyle="bold"
                 android:textColor="@color/primary"
                 android:layout_marginBottom="16dp"
-                android:layout_gravity="center_horizontal"/>
+                android:layout_gravity="center_horizontal"
+                android:drawablePadding="8dp"/>
 
             <TextView
                 android:id="@+id/timeText"
