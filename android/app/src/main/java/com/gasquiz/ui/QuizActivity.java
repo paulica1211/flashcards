@@ -279,6 +279,16 @@ public class QuizActivity extends AppCompatActivity {
             return;
         }
 
+        // OPTIMIZATION: Use prefetched previous question if available
+        if (prefetchedPreviousQuestion != null) {
+            Log.d(TAG, "Swipe right: using prefetched previous question - instant!");
+            savedCurrentQuestion = currentQuestion;
+            showingTemporaryResult = true;
+            showExplanation(prefetchedPreviousQuestion);
+            return;
+        }
+
+        // Fallback: load from network
         int previousQuestionNum = currentQuestionNumber - 1;
         Log.d(TAG, "Swipe right: loading question " + previousQuestionNum + " explanation");
 
