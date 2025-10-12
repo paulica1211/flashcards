@@ -76,7 +76,6 @@ public class QuizActivity extends AppCompatActivity {
     private long startTime;
 
     // Navigation state
-    private boolean cameFromResultCard = false;
     private boolean lastAnswerCorrect = false;
     private double lastAnswerTime = 0.0;
 
@@ -110,17 +109,8 @@ public class QuizActivity extends AppCompatActivity {
             return;
         }
 
-        // If we're on the question view
+        // If we're on the question view, load previous question
         if (questionContainer.getVisibility() == View.VISIBLE) {
-            // If we just came from result card, go back to show it again
-            if (cameFromResultCard) {
-                Log.d(TAG, "Going back to result card");
-                showResult(lastAnswerCorrect, lastAnswerTime);
-                cameFromResultCard = false;
-                return;
-            }
-
-            // Otherwise load previous question
             loadPreviousQuestion();
             return;
         }
@@ -168,7 +158,6 @@ public class QuizActivity extends AppCompatActivity {
         nextButton.setOnClickListener(v -> loadNextQuestion());
 
         nextQuestionButton.setOnClickListener(v -> {
-            cameFromResultCard = true; // Mark that we're navigating from result card
             showQuestionView();
             loadNextQuestion();
         });
@@ -256,8 +245,6 @@ public class QuizActivity extends AppCompatActivity {
     }
 
     private void loadNextQuestion() {
-        cameFromResultCard = false; // Clear flag when using next button
-
         // Check if we have a prefetched next question
         if (prefetchedNextQuestion != null) {
             // Use prefetched question instantly - no loading delay!
@@ -304,8 +291,6 @@ public class QuizActivity extends AppCompatActivity {
     }
 
     private void loadPreviousQuestion() {
-        cameFromResultCard = false; // Clear flag when using back button
-
         // Check if we have a prefetched previous question
         if (prefetchedPreviousQuestion != null) {
             // Use prefetched question instantly - no loading delay!
@@ -459,14 +444,12 @@ public class QuizActivity extends AppCompatActivity {
     private void selectAnswer(String answer) {
         if (currentQuestion == null) return;
 
-        cameFromResultCard = false; // Clear flag when answering a question
-
         long elapsedTime = System.currentTimeMillis() - startTime;
         double seconds = elapsedTime / 1000.0;
 
         boolean isCorrect = answer.equals(currentQuestion.getAnswer());
 
-        // Save the answer result for potential back navigation
+        // Save the answer result for display
         lastAnswerCorrect = isCorrect;
         lastAnswerTime = seconds;
 
@@ -543,6 +526,7 @@ public class QuizActivity extends AppCompatActivity {
     private void showQuestionView() {
         questionContainer.setVisibility(View.VISIBLE);
         resultCard.setVisibility(View.GONE);
+        // Don't clear navigation state here - let the caller decide
     }
 
     private void showLoading(boolean show) {

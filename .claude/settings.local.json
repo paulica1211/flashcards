@@ -5,7 +5,9 @@
       "Bash(/mnt/c/Users/hp/AppData/Local/Android/Sdk/platform-tools/adb.exe install -r /mnt/c/src/projects/gasquiz/android/app/build/outputs/apk/debug/app-debug.apk)",
       "Bash(/mnt/c/Users/hp/AppData/Local/Android/Sdk/platform-tools/adb.exe install -r 'C:\\src\\projects\\gasquiz\\android\\app\\build\\outputs\\apk\\debug\\app-debug.apk')",
       "Bash(/mnt/c/Users/hp/AppData/Local/Android/Sdk/platform-tools/adb.exe devices -l)",
-      "Bash(/mnt/c/Windows/System32/cmd.exe /c \"cd C:\\src\\projects\\gasquiz\\android && gradlew.bat assembleDebug\")"
+      "Bash(/mnt/c/Windows/System32/cmd.exe /c \"cd C:\\src\\projects\\gasquiz\\android && gradlew.bat assembleDebug\")",
+      "Bash(/mnt/c/Users/hp/AppData/Local/Android/Sdk/platform-tools/adb.exe logcat -c)",
+      "Bash(/mnt/c/Users/hp/AppData/Local/Android/Sdk/platform-tools/adb.exe logcat -s QuizActivity:D)"
     ],
     "deny": [],
     "ask": []
