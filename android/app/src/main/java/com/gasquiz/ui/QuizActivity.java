@@ -68,10 +68,17 @@ public class QuizActivity extends AppCompatActivity {
 
     // Data
     private Question currentQuestion;
+    private Question prefetchedNextQuestion;
+    private Question prefetchedPreviousQuestion;
     private String currentSheetName;
     private int currentQuestionNumber;
     private int importanceLevel = 0;
     private long startTime;
+
+    // Navigation state
+    private boolean cameFromResultCard = false;
+    private boolean lastAnswerCorrect = false;
+    private double lastAnswerTime = 0.0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -93,6 +100,33 @@ public class QuizActivity extends AppCompatActivity {
         // Called when returning from Settings with FLAG_ACTIVITY_CLEAR_TOP
         Log.d(TAG, "onNewIntent called - reloading settings");
         loadStartingInfo();
+    }
+
+    @Override
+    public void onBackPressed() {
+        // If we're showing the answer review screen, go back to question view
+        if (resultCard.getVisibility() == View.VISIBLE) {
+            showQuestionView();
+            return;
+        }
+
+        // If we're on the question view
+        if (questionContainer.getVisibility() == View.VISIBLE) {
+            // If we just came from result card, go back to show it again
+            if (cameFromResultCard) {
+                Log.d(TAG, "Going back to result card");
+                showResult(lastAnswerCorrect, lastAnswerTime);
+                cameFromResultCard = false;
+                return;
+            }
+
+            // Otherwise load previous question
+            loadPreviousQuestion();
+            return;
+        }
+
+        // Default behavior (exit app)
+        super.onBackPressed();
     }
 
     private void initViews() {
@@ -134,6 +168,7 @@ public class QuizActivity extends AppCompatActivity {
         nextButton.setOnClickListener(v -> loadNextQuestion());
 
         nextQuestionButton.setOnClickListener(v -> {
+            cameFromResultCard = true; // Mark that we're navigating from result card
             showQuestionView();
             loadNextQuestion();
         });
@@ -221,9 +256,28 @@ public class QuizActivity extends AppCompatActivity {
     }
 
     private void loadNextQuestion() {
-        showLoading(true);
+        cameFromResultCard = false; // Clear flag when using next button
 
-        apiService.getNextQuestion("getNextQuestion", currentSheetName, currentQuestionNumber, importanceLevel)
+        // Check if we have a prefetched next question
+        if (prefetchedNextQuestion != null) {
+            // Use prefetched question instantly - no loading delay!
+            currentQuestion = prefetchedNextQuestion;
+            currentQuestionNumber = currentQuestion.getCurrentNum();
+            prefetchedNextQuestion = null; // Clear cache
+            prefetchedPreviousQuestion = null; // Invalidate previous cache when moving forward
+            displayQuestion(currentQuestion);
+            startTime = System.currentTimeMillis();
+            Log.d(TAG, "Using prefetched question - instant load!");
+            return;
+        }
+
+        // Fallback to network call if prefetch wasn't ready
+        // Simple sequential navigation: just increment question number
+        currentQuestionNumber++;
+        showLoading(true);
+        Log.d(TAG, "Loading next question sequentially: " + currentQuestionNumber);
+
+        apiService.getQuestion("getQuestion", currentSheetName, currentQuestionNumber)
                 .enqueue(new Callback<Question>() {
                     @Override
                     public void onResponse(Call<Question> call, Response<Question> response) {
@@ -231,10 +285,10 @@ public class QuizActivity extends AppCompatActivity {
 
                         if (response.isSuccessful() && response.body() != null) {
                             currentQuestion = response.body();
-                            currentQuestionNumber = currentQuestion.getCurrentNum();
                             displayQuestion(currentQuestion);
                             startTime = System.currentTimeMillis();
                         } else {
+                            currentQuestionNumber--; // Revert on failure
                             Toast.makeText(QuizActivity.this, "No more questions", Toast.LENGTH_SHORT).show();
                         }
                     }
@@ -242,6 +296,7 @@ public class QuizActivity extends AppCompatActivity {
                     @Override
                     public void onFailure(Call<Question> call, Throwable t) {
                         showLoading(false);
+                        currentQuestionNumber--; // Revert on failure
                         showError("Network error: " + t.getMessage());
                         Log.e(TAG, "Error loading next question", t);
                     }
@@ -249,9 +304,33 @@ public class QuizActivity extends AppCompatActivity {
     }
 
     private void loadPreviousQuestion() {
-        showLoading(true);
+        cameFromResultCard = false; // Clear flag when using back button
 
-        apiService.getPreviousQuestion("getPreviousQuestion", currentSheetName, currentQuestionNumber, importanceLevel)
+        // Check if we have a prefetched previous question
+        if (prefetchedPreviousQuestion != null) {
+            // Use prefetched question instantly - no loading delay!
+            currentQuestion = prefetchedPreviousQuestion;
+            currentQuestionNumber = currentQuestion.getCurrentNum();
+            prefetchedPreviousQuestion = null; // Clear cache
+            prefetchedNextQuestion = null; // Invalidate next cache when moving backward
+            displayQuestion(currentQuestion);
+            startTime = System.currentTimeMillis();
+            Log.d(TAG, "Using prefetched previous question - instant load!");
+            return;
+        }
+
+        // Fallback to network call if prefetch wasn't ready
+        // Simple sequential navigation: just decrement question number
+        if (currentQuestionNumber <= 1) {
+            Toast.makeText(this, "No previous question", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        currentQuestionNumber--;
+        showLoading(true);
+        Log.d(TAG, "Loading previous question sequentially: " + currentQuestionNumber);
+
+        apiService.getQuestion("getQuestion", currentSheetName, currentQuestionNumber)
                 .enqueue(new Callback<Question>() {
                     @Override
                     public void onResponse(Call<Question> call, Response<Question> response) {
@@ -259,17 +338,18 @@ public class QuizActivity extends AppCompatActivity {
 
                         if (response.isSuccessful() && response.body() != null) {
                             currentQuestion = response.body();
-                            currentQuestionNumber = currentQuestion.getCurrentNum();
                             displayQuestion(currentQuestion);
                             startTime = System.currentTimeMillis();
                         } else {
-                            Toast.makeText(QuizActivity.this, "No previous question", Toast.LENGTH_SHORT).show();
+                            currentQuestionNumber++; // Revert on failure
+                            Toast.makeText(QuizActivity.this, "Failed to load previous question", Toast.LENGTH_SHORT).show();
                         }
                     }
 
                     @Override
                     public void onFailure(Call<Question> call, Throwable t) {
                         showLoading(false);
+                        currentQuestionNumber++; // Revert on failure
                         showError("Network error: " + t.getMessage());
                         Log.e(TAG, "Error loading previous question", t);
                     }
@@ -286,7 +366,59 @@ public class QuizActivity extends AppCompatActivity {
         // Save current progress locally
         saveCurrentProgress();
 
+        // Prefetch next and previous questions in background
+        prefetchNextQuestion();
+        prefetchPreviousQuestion();
+
         showQuestionView();
+    }
+
+    private void prefetchNextQuestion() {
+        // Load next question in background without showing loading indicator
+        // Simple sequential: just load currentQuestionNumber + 1
+        int nextQuestionNum = currentQuestionNumber + 1;
+        apiService.getQuestion("getQuestion", currentSheetName, nextQuestionNum)
+                .enqueue(new Callback<Question>() {
+                    @Override
+                    public void onResponse(Call<Question> call, Response<Question> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            prefetchedNextQuestion = response.body();
+                            Log.d(TAG, "Prefetched next question: " + prefetchedNextQuestion.getCurrentNum());
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<Question> call, Throwable t) {
+                        Log.w(TAG, "Failed to prefetch next question", t);
+                        prefetchedNextQuestion = null;
+                    }
+                });
+    }
+
+    private void prefetchPreviousQuestion() {
+        // Load previous question in background without showing loading indicator
+        // Simple sequential: just load currentQuestionNumber - 1
+        if (currentQuestionNumber <= 1) {
+            return; // No previous question to prefetch
+        }
+
+        int previousQuestionNum = currentQuestionNumber - 1;
+        apiService.getQuestion("getQuestion", currentSheetName, previousQuestionNum)
+                .enqueue(new Callback<Question>() {
+                    @Override
+                    public void onResponse(Call<Question> call, Response<Question> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            prefetchedPreviousQuestion = response.body();
+                            Log.d(TAG, "Prefetched previous question: " + prefetchedPreviousQuestion.getCurrentNum());
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<Question> call, Throwable t) {
+                        Log.w(TAG, "Failed to prefetch previous question", t);
+                        prefetchedPreviousQuestion = null;
+                    }
+                });
     }
 
     private void saveCurrentProgress() {
@@ -327,10 +459,16 @@ public class QuizActivity extends AppCompatActivity {
     private void selectAnswer(String answer) {
         if (currentQuestion == null) return;
 
+        cameFromResultCard = false; // Clear flag when answering a question
+
         long elapsedTime = System.currentTimeMillis() - startTime;
         double seconds = elapsedTime / 1000.0;
 
         boolean isCorrect = answer.equals(currentQuestion.getAnswer());
+
+        // Save the answer result for potential back navigation
+        lastAnswerCorrect = isCorrect;
+        lastAnswerTime = seconds;
 
         // Record answer
         apiService.recordAnswer("recordAnswer", currentSheetName, currentQuestionNumber, isCorrect, seconds)
