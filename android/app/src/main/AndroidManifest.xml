@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.gasquiz">
+    package="com.flashcardapp">
 
     <!-- Internet permission is required to load the web app -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -8,7 +8,7 @@
 
     <application
         android:allowBackup="true"
-        android:label="Patent Quiz"
+        android:label="Flashcard App"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true"
@@ -26,7 +26,7 @@
         </activity>
 
         <activity
-            android:name=".ui.QuizActivity"
+            android:name=".ui.FlashcardActivity"
             android:configChanges="orientation|screenSize"
             android:exported="false"
             android:theme="@style/AppTheme" />
@@ -35,8 +35,8 @@
             android:name=".ui.SettingsActivity"
             android:configChanges="orientation|screenSize"
             android:exported="false"
-            android:theme="@style/AppTheme"
-            android:parentActivityName=".ui.QuizActivity" />
+            android:label="Settings"
+            android:theme="@style/AppTheme" />
 
     </application>
 
