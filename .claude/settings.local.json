@@ -30,7 +30,8 @@
       "Bash(/mnt/c/Users/hp/AppData/Local/Android/Sdk/platform-tools/adb.exe logcat -d -s FlashcardActivity:D AndroidRuntime:E)",
       "Bash(/mnt/c/Users/hp/AppData/Local/Android/Sdk/platform-tools/adb.exe logcat -d -s FlashcardActivity:D)",
       "Bash(git remote add:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(cmd.exe:*)"
     ],
     "deny": [],
     "ask": []

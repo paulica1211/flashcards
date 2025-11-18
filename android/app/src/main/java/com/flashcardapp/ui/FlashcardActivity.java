@@ -324,6 +324,10 @@ public class FlashcardActivity extends AppCompatActivity {
     }
 
     private void loadNextCard() {
+        if (currentFlashcard != null && currentCardNumber >= currentFlashcard.getTotalCards()) {
+            Toast.makeText(this, "No next card - you've reached the end", Toast.LENGTH_SHORT).show();
+            return;
+        }
         currentCardNumber++;
         loadCurrentCard();
     }
