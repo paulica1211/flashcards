@@ -1,9 +1,13 @@
 package com.flashcardapp.ui;
 
+import android.Manifest;
 import android.animation.AnimatorInflater;
 import android.animation.AnimatorSet;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.media.MediaPlayer;
+import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.text.Html;
 import android.text.Spanned;
@@ -15,8 +19,11 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.flashcardapp.R;
 import com.flashcardapp.models.Flashcard;
@@ -26,6 +33,8 @@ import com.flashcardapp.network.ApiClient;
 import com.flashcardapp.network.QuizApiService;
 import com.google.android.material.button.MaterialButton;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +52,8 @@ public class FlashcardActivity extends AppCompatActivity {
     private static final int PREFETCH_COUNT = 10; // Number of cards to prefetch
     private static final int SWIPE_THRESHOLD = 100;
     private static final int SWIPE_VELOCITY_THRESHOLD = 100;
+    private static final int REQUEST_RECORD_AUDIO = 200;
+    private static final int MAX_RECORDING_DURATION = 30000; // 30 seconds
 
     // Views
     private TextView cardProgressText;
@@ -57,10 +68,19 @@ public class FlashcardActivity extends AppCompatActivity {
     private MaterialButton importance1Button;
     private MaterialButton importance2Button;
     private MaterialButton importance3Button;
+    private MaterialButton recordButton;
+    private MaterialButton playButton;
+    private MaterialButton deleteAudioButton;
     private ProgressBar progressBar;
 
     // API
     private QuizApiService apiService;
+
+    // Audio
+    private MediaRecorder mediaRecorder;
+    private MediaPlayer mediaPlayer;
+    private boolean isRecording = false;
+    private boolean isPlaying = false;
 
     // Data
     private Flashcard currentFlashcard;
@@ -102,6 +122,9 @@ public class FlashcardActivity extends AppCompatActivity {
         importance1Button = findViewById(R.id.importance1Button);
         importance2Button = findViewById(R.id.importance2Button);
         importance3Button = findViewById(R.id.importance3Button);
+        recordButton = findViewById(R.id.recordButton);
+        playButton = findViewById(R.id.playButton);
+        deleteAudioButton = findViewById(R.id.deleteAudioButton);
         progressBar = findViewById(R.id.progressBar);
     }
 
@@ -156,6 +179,11 @@ public class FlashcardActivity extends AppCompatActivity {
         importance1Button.setOnClickListener(v -> setImportance(1));
         importance2Button.setOnClickListener(v -> setImportance(2));
         importance3Button.setOnClickListener(v -> setImportance(3));
+
+        // Audio control buttons
+        recordButton.setOnClickListener(v -> toggleRecording());
+        playButton.setOnClickListener(v -> togglePlayback());
+        deleteAudioButton.setOnClickListener(v -> deleteAudio());
     }
 
     private void openSettings() {
@@ -169,6 +197,13 @@ public class FlashcardActivity extends AppCompatActivity {
         // Clear cache and reload if sheet was changed in settings
         SharedPreferences preferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         String sheetName = preferences.getString(KEY_SHEET_NAME, "Sheet1");
+
+        // Reload current card number from SharedPreferences (may have been updated in Settings)
+        int savedCardNumber = preferences.getInt(KEY_CARD_NUMBER, 1);
+        if (currentCardNumber != savedCardNumber) {
+            Log.d(TAG, "Card number changed in Settings: " + currentCardNumber + " -> " + savedCardNumber);
+            currentCardNumber = savedCardNumber;
+        }
 
         // Only clear cache if we have cards cached (avoid clearing on first load)
         if (!cardCache.isEmpty()) {
@@ -362,6 +397,9 @@ public class FlashcardActivity extends AppCompatActivity {
 
         // Update importance level UI
         updateImportanceButtons(flashcard.getImportance());
+
+        // Update audio buttons UI
+        updateAudioButtons();
     }
 
     private void updateImportanceButtons(int importance) {
@@ -555,5 +593,250 @@ public class FlashcardActivity extends AppCompatActivity {
 
     private void showError(String message) {
         Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+    }
+
+    // ==================== Audio Recording Methods ====================
+
+    private File getAudioFile(int cardNumber) {
+        SharedPreferences preferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        String sheetName = preferences.getString(KEY_SHEET_NAME, "Sheet1");
+
+        // Sanitize sheet name for file system
+        String safeSheetName = sanitizeFileName(sheetName);
+
+        File audioDir = new File(getFilesDir(), "audio");
+        if (!audioDir.exists()) {
+            audioDir.mkdirs();
+        }
+
+        String fileName = safeSheetName + "_card_" + cardNumber + ".3gp";
+        return new File(audioDir, fileName);
+    }
+
+    private String sanitizeFileName(String name) {
+        return name.replaceAll("[/\\\\:*?\"<>|]", "_")
+                   .replaceAll("\\s+", "_")
+                   .trim();
+    }
+
+    private void updateAudioButtons() {
+        File audioFile = getAudioFile(currentCardNumber);
+        boolean hasAudio = audioFile.exists();
+
+        playButton.setEnabled(hasAudio);
+        deleteAudioButton.setVisibility(hasAudio ? View.VISIBLE : View.GONE);
+        recordButton.setText(hasAudio ? "🎤 Re-record" : "🎤 Record");
+
+        // Reset states
+        if (!hasAudio) {
+            isPlaying = false;
+            playButton.setText("▶️ Play");
+        }
+    }
+
+    private void toggleRecording() {
+        if (isRecording) {
+            stopRecording();
+        } else {
+            startRecording();
+        }
+    }
+
+    private void startRecording() {
+        // Check permission
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                new String[]{Manifest.permission.RECORD_AUDIO},
+                REQUEST_RECORD_AUDIO);
+            return;
+        }
+
+        File audioFile = getAudioFile(currentCardNumber);
+
+        // Show confirmation if audio file already exists
+        if (audioFile.exists()) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Re-record Audio")
+                    .setMessage("This will replace the existing recording. Continue?")
+                    .setPositiveButton("Re-record", (dialog, which) -> {
+                        performRecording();
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+        } else {
+            performRecording();
+        }
+    }
+
+    private void performRecording() {
+        // Stop playback if playing
+        if (isPlaying) {
+            stopPlayback();
+        }
+
+        File audioFile = getAudioFile(currentCardNumber);
+
+        mediaRecorder = new MediaRecorder();
+        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
+        mediaRecorder.setOutputFile(audioFile.getAbsolutePath());
+        mediaRecorder.setMaxDuration(MAX_RECORDING_DURATION);
+
+        try {
+            mediaRecorder.prepare();
+            mediaRecorder.start();
+            isRecording = true;
+            recordButton.setText("⏹ Stop");
+            recordButton.setBackgroundColor(getResources().getColor(android.R.color.holo_red_light));
+            Log.d(TAG, "Recording started for card " + currentCardNumber);
+            Toast.makeText(this, "Recording... (max 30 sec)", Toast.LENGTH_SHORT).show();
+        } catch (IOException e) {
+            Log.e(TAG, "Recording failed", e);
+            Toast.makeText(this, "Failed to start recording", Toast.LENGTH_SHORT).show();
+            releaseMediaRecorder();
+        }
+    }
+
+    private void stopRecording() {
+        if (mediaRecorder != null && isRecording) {
+            try {
+                mediaRecorder.stop();
+                Log.d(TAG, "Recording stopped");
+                Toast.makeText(this, "Recording saved", Toast.LENGTH_SHORT).show();
+            } catch (RuntimeException e) {
+                Log.e(TAG, "Stop recording failed", e);
+            } finally {
+                releaseMediaRecorder();
+                isRecording = false;
+                recordButton.setBackgroundColor(getResources().getColor(android.R.color.transparent));
+                updateAudioButtons();
+            }
+        }
+    }
+
+    private void togglePlayback() {
+        if (isPlaying) {
+            stopPlayback();
+        } else {
+            startPlayback();
+        }
+    }
+
+    private void startPlayback() {
+        File audioFile = getAudioFile(currentCardNumber);
+
+        if (!audioFile.exists()) {
+            Toast.makeText(this, "No recording found", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Stop recording if recording
+        if (isRecording) {
+            stopRecording();
+        }
+
+        mediaPlayer = new MediaPlayer();
+        try {
+            mediaPlayer.setDataSource(audioFile.getAbsolutePath());
+            mediaPlayer.prepare();
+            mediaPlayer.start();
+            isPlaying = true;
+            playButton.setText("⏸ Pause");
+            Log.d(TAG, "Playback started for card " + currentCardNumber);
+
+            mediaPlayer.setOnCompletionListener(mp -> {
+                isPlaying = false;
+                playButton.setText("▶️ Play");
+                releaseMediaPlayer();
+            });
+        } catch (IOException e) {
+            Log.e(TAG, "Playback failed", e);
+            Toast.makeText(this, "Failed to play recording", Toast.LENGTH_SHORT).show();
+            releaseMediaPlayer();
+        }
+    }
+
+    private void stopPlayback() {
+        if (mediaPlayer != null && isPlaying) {
+            mediaPlayer.stop();
+            releaseMediaPlayer();
+            isPlaying = false;
+            playButton.setText("▶️ Play");
+            Log.d(TAG, "Playback stopped");
+        }
+    }
+
+    private void deleteAudio() {
+        File audioFile = getAudioFile(currentCardNumber);
+        if (!audioFile.exists()) {
+            return;
+        }
+
+        // Show confirmation dialog
+        new AlertDialog.Builder(this)
+                .setTitle("Delete Recording")
+                .setMessage("Are you sure you want to delete this recording?")
+                .setPositiveButton("Delete", (dialog, which) -> {
+                    // Stop playback if playing this file
+                    if (isPlaying) {
+                        stopPlayback();
+                    }
+
+                    if (audioFile.delete()) {
+                        Toast.makeText(this, "Recording deleted", Toast.LENGTH_SHORT).show();
+                        updateAudioButtons();
+                        Log.d(TAG, "Audio deleted for card " + currentCardNumber);
+                    } else {
+                        Toast.makeText(this, "Failed to delete recording", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void releaseMediaRecorder() {
+        if (mediaRecorder != null) {
+            mediaRecorder.release();
+            mediaRecorder = null;
+        }
+    }
+
+    private void releaseMediaPlayer() {
+        if (mediaPlayer != null) {
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_RECORD_AUDIO) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                startRecording();
+            } else {
+                Toast.makeText(this, "Microphone permission required for recording", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (isRecording) {
+            stopRecording();
+        }
+        if (isPlaying) {
+            stopPlayback();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        releaseMediaRecorder();
+        releaseMediaPlayer();
     }
 }

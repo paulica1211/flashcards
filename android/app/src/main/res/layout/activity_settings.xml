@@ -49,6 +49,15 @@
                     android:text="Current: Sheet1"
                     android:textSize="14sp"
                     android:textColor="#666666"
+                    android:layout_marginBottom="4dp" />
+
+                <TextView
+                    android:id="@+id/currentCardText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Progress: Card 1"
+                    android:textSize="14sp"
+                    android:textColor="#666666"
                     android:layout_marginBottom="12dp" />
 
                 <com.google.android.material.button.MaterialButton
