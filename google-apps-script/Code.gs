@@ -368,6 +368,11 @@ function convertRichTextToHtml(plainText, richTextValue) {
       styledText = "<u>" + styledText + "</u>";
     }
 
+    // Apply strikethrough
+    if (textStyle.isStrikethrough()) {
+      styledText = "<strike>" + styledText + "</strike>";
+    }
+
     // Apply foreground color
     const color = textStyle.getForegroundColor();
     if (color && color !== "#000000") {
