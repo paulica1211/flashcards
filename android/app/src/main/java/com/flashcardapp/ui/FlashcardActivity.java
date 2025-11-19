@@ -3,12 +3,17 @@ package com.flashcardapp.ui;
 import android.Manifest;
 import android.animation.AnimatorInflater;
 import android.animation.AnimatorSet;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.text.Html;
 import android.text.Spanned;
 import android.util.Log;
@@ -18,6 +23,9 @@ import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import java.io.FileInputStream;
+import java.io.OutputStream;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -53,6 +61,7 @@ public class FlashcardActivity extends AppCompatActivity {
     private static final int SWIPE_THRESHOLD = 100;
     private static final int SWIPE_VELOCITY_THRESHOLD = 100;
     private static final int REQUEST_RECORD_AUDIO = 200;
+    private static final int REQUEST_WRITE_STORAGE = 201;
     private static final int MAX_RECORDING_DURATION = 60000; // 60 seconds
 
     // Views
@@ -716,6 +725,10 @@ public class FlashcardActivity extends AppCompatActivity {
             try {
                 mediaRecorder.stop();
                 Log.d(TAG, "Recording stopped");
+
+                // Save to public Music folder in background
+                saveToPublicMusicFolder();
+
                 Toast.makeText(this, "Recording saved", Toast.LENGTH_SHORT).show();
             } catch (RuntimeException e) {
                 Log.e(TAG, "Stop recording failed", e);
@@ -726,6 +739,95 @@ public class FlashcardActivity extends AppCompatActivity {
                 updateAudioButtons();
             }
         }
+    }
+
+    private void saveToPublicMusicFolder() {
+        // Check storage permission for Android 9 and below
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                    REQUEST_WRITE_STORAGE);
+                return;
+            }
+        }
+
+        // Run in background thread
+        new Thread(() -> {
+            try {
+                File sourceFile = getAudioFile(currentCardNumber);
+                if (!sourceFile.exists()) {
+                    Log.w(TAG, "Source audio file not found: " + sourceFile.getAbsolutePath());
+                    return;
+                }
+
+                SharedPreferences preferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+                String sheetName = preferences.getString(KEY_SHEET_NAME, "Sheet1");
+                String safeSheetName = sanitizeFileName(sheetName);
+                String fileName = safeSheetName + "_card_" + currentCardNumber + ".3gp";
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    // Android 10+ use MediaStore API
+                    ContentValues values = new ContentValues();
+                    values.put(MediaStore.Audio.Media.DISPLAY_NAME, fileName);
+                    values.put(MediaStore.Audio.Media.MIME_TYPE, "audio/3gpp");
+                    values.put(MediaStore.Audio.Media.RELATIVE_PATH,
+                              Environment.DIRECTORY_MUSIC + "/FlashcardApp/" + safeSheetName);
+                    values.put(MediaStore.Audio.Media.IS_PENDING, 1);
+
+                    Uri collection = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY);
+                    Uri itemUri = getContentResolver().insert(collection, values);
+
+                    if (itemUri != null) {
+                        try (OutputStream out = getContentResolver().openOutputStream(itemUri);
+                             FileInputStream in = new FileInputStream(sourceFile)) {
+                            byte[] buffer = new byte[8192];
+                            int bytesRead;
+                            while ((bytesRead = in.read(buffer)) != -1) {
+                                out.write(buffer, 0, bytesRead);
+                            }
+                            out.flush();
+                        }
+
+                        values.clear();
+                        values.put(MediaStore.Audio.Media.IS_PENDING, 0);
+                        getContentResolver().update(itemUri, values, null, null);
+
+                        Log.d(TAG, "Audio saved to public Music folder (MediaStore): " + fileName);
+                    }
+                } else {
+                    // Android 9 and below use File API
+                    File musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC);
+                    File flashcardDir = new File(musicDir, "FlashcardApp/" + safeSheetName);
+                    if (!flashcardDir.exists()) {
+                        flashcardDir.mkdirs();
+                    }
+
+                    File destFile = new File(flashcardDir, fileName);
+                    try (FileInputStream in = new FileInputStream(sourceFile);
+                         java.io.FileOutputStream out = new java.io.FileOutputStream(destFile)) {
+                        byte[] buffer = new byte[8192];
+                        int bytesRead;
+                        while ((bytesRead = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, bytesRead);
+                        }
+                        out.flush();
+                    }
+
+                    // Notify media scanner
+                    Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+                    mediaScanIntent.setData(Uri.fromFile(destFile));
+                    sendBroadcast(mediaScanIntent);
+
+                    Log.d(TAG, "Audio saved to public Music folder: " + destFile.getAbsolutePath());
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to save audio to public Music folder", e);
+                runOnUiThread(() -> Toast.makeText(this,
+                    "Failed to save to Music folder", Toast.LENGTH_SHORT).show());
+            }
+        }).start();
     }
 
     private void togglePlayback() {
@@ -830,6 +932,13 @@ public class FlashcardActivity extends AppCompatActivity {
                 startRecording();
             } else {
                 Toast.makeText(this, "Microphone permission required for recording", Toast.LENGTH_LONG).show();
+            }
+        } else if (requestCode == REQUEST_WRITE_STORAGE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permission granted, retry saving to public folder
+                saveToPublicMusicFolder();
+            } else {
+                Toast.makeText(this, "Storage permission denied - audio saved to app folder only", Toast.LENGTH_LONG).show();
             }
         }
     }
