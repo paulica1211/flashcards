@@ -3,7 +3,9 @@ package com.flashcardapp.ui;
 import android.app.AlertDialog;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.text.InputType;
 import android.util.Log;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -32,6 +34,7 @@ public class SettingsActivity extends AppCompatActivity {
     private TextView currentSheetText;
     private TextView currentCardText;
     private MaterialButton selectSheetButton;
+    private MaterialButton jumpToCardButton;
     private MaterialButton resetProgressButton;
     private SharedPreferences prefs;
     private QuizApiService apiService;
@@ -53,6 +56,7 @@ public class SettingsActivity extends AppCompatActivity {
         currentSheetText = findViewById(R.id.currentSheetText);
         currentCardText = findViewById(R.id.currentCardText);
         selectSheetButton = findViewById(R.id.selectSheetButton);
+        jumpToCardButton = findViewById(R.id.jumpToCardButton);
         resetProgressButton = findViewById(R.id.resetProgressButton);
     }
 
@@ -96,6 +100,7 @@ public class SettingsActivity extends AppCompatActivity {
 
     private void setupListeners() {
         selectSheetButton.setOnClickListener(v -> fetchAndShowSheetSelection());
+        jumpToCardButton.setOnClickListener(v -> showJumpToCardDialog());
         resetProgressButton.setOnClickListener(v -> resetProgress());
     }
 
@@ -155,6 +160,65 @@ public class SettingsActivity extends AppCompatActivity {
                     updateCurrentSheetDisplay(); // This will fetch the correct card number for the new sheet
                     Toast.makeText(SettingsActivity.this, "Sheet changed to: " + selectedSheet, Toast.LENGTH_SHORT).show();
                     dialog.dismiss();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void showJumpToCardDialog() {
+        // Get current card number
+        int currentCard = prefs.getInt(KEY_CARD_NUMBER, 1);
+
+        // Create EditText for number input
+        EditText input = new EditText(this);
+        input.setInputType(InputType.TYPE_CLASS_NUMBER);
+        input.setHint("Enter card number");
+        input.setText(String.valueOf(currentCard));
+        input.setSelectAllOnFocus(true);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Jump to Card")
+                .setMessage("Enter the card number you want to jump to:")
+                .setView(input)
+                .setPositiveButton("Jump", (dialog, which) -> {
+                    String inputText = input.getText().toString().trim();
+                    if (inputText.isEmpty()) {
+                        Toast.makeText(this, "Please enter a card number", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    try {
+                        int cardNumber = Integer.parseInt(inputText);
+                        if (cardNumber < 1) {
+                            Toast.makeText(this, "Card number must be at least 1", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+
+                        // Save to SharedPreferences
+                        prefs.edit().putInt(KEY_CARD_NUMBER, cardNumber).apply();
+                        currentCardText.setText("Progress: Card " + cardNumber);
+
+                        // Save to Google Sheets
+                        String sheetName = prefs.getString(KEY_SHEET_NAME, "Sheet1");
+                        apiService.saveProgress("saveProgress", cardNumber, sheetName)
+                                .enqueue(new Callback<com.google.gson.JsonObject>() {
+                                    @Override
+                                    public void onResponse(Call<com.google.gson.JsonObject> call, Response<com.google.gson.JsonObject> response) {
+                                        if (response.isSuccessful()) {
+                                            Log.d(TAG, "Jump to card saved to Google Sheets");
+                                        }
+                                    }
+
+                                    @Override
+                                    public void onFailure(Call<com.google.gson.JsonObject> call, Throwable t) {
+                                        Log.e(TAG, "Failed to save jump to Google Sheets", t);
+                                    }
+                                });
+
+                        Toast.makeText(this, "Jumped to Card " + cardNumber, Toast.LENGTH_SHORT).show();
+                    } catch (NumberFormatException e) {
+                        Toast.makeText(this, "Invalid card number", Toast.LENGTH_SHORT).show();
+                    }
                 })
                 .setNegativeButton("Cancel", null)
                 .show();

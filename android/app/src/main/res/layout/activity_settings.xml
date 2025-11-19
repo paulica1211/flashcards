@@ -94,6 +94,15 @@
                     android:layout_marginBottom="12dp" />
 
                 <com.google.android.material.button.MaterialButton
+                    android:id="@+id/jumpToCardButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Jump to Card..."
+                    app:icon="@android:drawable/ic_menu_directions"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_marginBottom="8dp" />
+
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/resetProgressButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

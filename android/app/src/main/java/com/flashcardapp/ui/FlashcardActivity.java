@@ -53,7 +53,7 @@ public class FlashcardActivity extends AppCompatActivity {
     private static final int SWIPE_THRESHOLD = 100;
     private static final int SWIPE_VELOCITY_THRESHOLD = 100;
     private static final int REQUEST_RECORD_AUDIO = 200;
-    private static final int MAX_RECORDING_DURATION = 30000; // 30 seconds
+    private static final int MAX_RECORDING_DURATION = 60000; // 60 seconds
 
     // Views
     private TextView cardProgressText;
@@ -478,6 +478,18 @@ public class FlashcardActivity extends AppCompatActivity {
         // Convert line breaks to <br> tags
         String formatted = html.replace("\n", "<br>");
 
+        // Convert CSS underline styles to <u> tags for Android's HTML parser
+        // Google Sheets may send: <span style="text-decoration: underline;">text</span>
+        // Match the entire span element with underline and wrap content in <u> tags
+        formatted = formatted.replaceAll(
+            "<span style=\"([^\"]*)text-decoration:\\s*underline([^\"]*)\">([^<]*)</span>",
+            "<u>$3</u>"
+        );
+        formatted = formatted.replaceAll(
+            "<span style=\"([^\"]*)text-decoration-line:\\s*underline([^\"]*)\">([^<]*)</span>",
+            "<u>$3</u>"
+        );
+
         Spanned result;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
             result = Html.fromHtml(formatted, Html.FROM_HTML_MODE_COMPACT);
@@ -691,7 +703,7 @@ public class FlashcardActivity extends AppCompatActivity {
             recordButton.setText("⏹ Stop");
             recordButton.setBackgroundColor(getResources().getColor(android.R.color.holo_red_light));
             Log.d(TAG, "Recording started for card " + currentCardNumber);
-            Toast.makeText(this, "Recording... (max 30 sec)", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Recording... (max 60 sec)", Toast.LENGTH_SHORT).show();
         } catch (IOException e) {
             Log.e(TAG, "Recording failed", e);
             Toast.makeText(this, "Failed to start recording", Toast.LENGTH_SHORT).show();

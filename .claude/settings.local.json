@@ -31,7 +31,8 @@
       "Bash(/mnt/c/Users/hp/AppData/Local/Android/Sdk/platform-tools/adb.exe logcat -d -s FlashcardActivity:D)",
       "Bash(git remote add:*)",
       "Bash(git push:*)",
-      "Bash(cmd.exe:*)"
+      "Bash(cmd.exe:*)",
+      "Bash(/mnt/c/Windows/System32/cmd.exe /c \"cd C:\\src\\projects\\flashcard\\android && gradlew.bat assembleDebug\")"
     ],
     "deny": [],
     "ask": []

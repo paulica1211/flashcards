@@ -363,6 +363,11 @@ function convertRichTextToHtml(plainText, richTextValue) {
       styledText = "<i>" + styledText + "</i>";
     }
 
+    // Apply underline
+    if (textStyle.isUnderline()) {
+      styledText = "<u>" + styledText + "</u>";
+    }
+
     // Apply foreground color
     const color = textStyle.getForegroundColor();
     if (color && color !== "#000000") {

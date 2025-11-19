@@ -8,7 +8,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 import java.util.concurrent.TimeUnit;
 
 public class ApiClient {
-    private static final String BASE_URL = "https://script.google.com/macros/s/AKfycbx_JVCFHLbYz-G5ddibM-s5YusUbRUtB1NEG8OWezZ7ziXi3sEudxEmvgFkvWHbShYT/";
+    private static final String BASE_URL = "https://script.google.com/macros/s/AKfycbw5gZJIvX2ViMKCteN7r8l76FMIqCIyx9cclRu92hUloxtQFPtoxy4k2v5PWHyr-Z5l/";
     private static Retrofit retrofit = null;
 
     public static Retrofit getClient() {
