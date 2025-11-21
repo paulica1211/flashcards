@@ -31,6 +31,9 @@ public class SettingsActivity extends AppCompatActivity {
     private static final String KEY_SHEET_NAME = "selected_sheet_name";
     private static final String KEY_CARD_NUMBER = "current_card_number";
 
+    private EditText apiUrlEditText;
+    private MaterialButton testConnectionButton;
+    private MaterialButton saveApiUrlButton;
     private TextView currentSheetText;
     private TextView currentCardText;
     private MaterialButton selectSheetButton;
@@ -45,19 +48,32 @@ public class SettingsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_settings);
 
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        apiService = ApiClient.getApiService();
 
         initializeViews();
+        loadApiUrl();
+        updateApiService();
         updateCurrentSheetDisplay();
         setupListeners();
     }
 
     private void initializeViews() {
+        apiUrlEditText = findViewById(R.id.apiUrlEditText);
+        testConnectionButton = findViewById(R.id.testConnectionButton);
+        saveApiUrlButton = findViewById(R.id.saveApiUrlButton);
         currentSheetText = findViewById(R.id.currentSheetText);
         currentCardText = findViewById(R.id.currentCardText);
         selectSheetButton = findViewById(R.id.selectSheetButton);
         jumpToCardButton = findViewById(R.id.jumpToCardButton);
         resetProgressButton = findViewById(R.id.resetProgressButton);
+    }
+
+    private void loadApiUrl() {
+        String currentUrl = ApiClient.getApiUrl(this);
+        apiUrlEditText.setText(currentUrl);
+    }
+
+    private void updateApiService() {
+        apiService = ApiClient.getApiService(this);
     }
 
     private void updateCurrentSheetDisplay() {
@@ -69,6 +85,11 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void fetchCurrentProgress(String sheetName) {
+        if (apiService == null) {
+            currentCardText.setText("Progress: API not configured");
+            return;
+        }
+
         currentCardText.setText("Progress: Loading...");
 
         apiService.getFlashcardStartingInfo("getFlashcardStartingInfo", sheetName).enqueue(new Callback<StartingInfo>() {
@@ -99,12 +120,103 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void setupListeners() {
+        saveApiUrlButton.setOnClickListener(v -> saveApiUrl());
+        testConnectionButton.setOnClickListener(v -> testConnection());
         selectSheetButton.setOnClickListener(v -> fetchAndShowSheetSelection());
         jumpToCardButton.setOnClickListener(v -> showJumpToCardDialog());
         resetProgressButton.setOnClickListener(v -> resetProgress());
     }
 
+    private void saveApiUrl() {
+        String url = apiUrlEditText.getText().toString().trim();
+
+        if (url.isEmpty()) {
+            Toast.makeText(this, "Please enter a URL", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Basic validation
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            Toast.makeText(this, "URL must start with http:// or https://", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Save URL
+        ApiClient.saveApiUrl(this, url);
+        updateApiService();
+
+        Toast.makeText(this, "API URL saved successfully", Toast.LENGTH_SHORT).show();
+        Log.d(TAG, "API URL saved: " + url);
+
+        // Reload sheet display after URL change
+        updateCurrentSheetDisplay();
+    }
+
+    private void testConnection() {
+        String url = apiUrlEditText.getText().toString().trim();
+
+        if (url.isEmpty()) {
+            Toast.makeText(this, "Please enter a URL", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Temporarily save URL for testing
+        ApiClient.saveApiUrl(this, url);
+        updateApiService();
+
+        if (apiService == null) {
+            Toast.makeText(this, "Invalid URL configuration", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        testConnectionButton.setEnabled(false);
+        testConnectionButton.setText("Testing...");
+
+        // Try to fetch available sheets to test connection
+        apiService.getAvailableSheets("getAvailableSheets").enqueue(new Callback<SheetList>() {
+            @Override
+            public void onResponse(Call<SheetList> call, Response<SheetList> response) {
+                testConnectionButton.setEnabled(true);
+                testConnectionButton.setText("Test");
+
+                if (response.isSuccessful() && response.body() != null) {
+                    List<String> sheets = response.body().getSheets();
+                    if (sheets != null && !sheets.isEmpty()) {
+                        Toast.makeText(SettingsActivity.this,
+                            "✓ Connection successful! Found " + sheets.size() + " sheet(s)",
+                            Toast.LENGTH_LONG).show();
+                        Log.d(TAG, "Connection test successful. Sheets: " + sheets);
+                    } else {
+                        Toast.makeText(SettingsActivity.this,
+                            "Connection successful but no sheets found",
+                            Toast.LENGTH_LONG).show();
+                    }
+                } else {
+                    Toast.makeText(SettingsActivity.this,
+                        "✗ Connection failed: " + response.code(),
+                        Toast.LENGTH_LONG).show();
+                    Log.w(TAG, "Connection test failed: " + response.code());
+                }
+            }
+
+            @Override
+            public void onFailure(Call<SheetList> call, Throwable t) {
+                testConnectionButton.setEnabled(true);
+                testConnectionButton.setText("Test");
+                Toast.makeText(SettingsActivity.this,
+                    "✗ Connection error: " + t.getMessage(),
+                    Toast.LENGTH_LONG).show();
+                Log.e(TAG, "Connection test error", t);
+            }
+        });
+    }
+
     private void fetchAndShowSheetSelection() {
+        if (apiService == null) {
+            Toast.makeText(this, "Please configure API URL first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         selectSheetButton.setEnabled(false);
         selectSheetButton.setText("Loading...");
 
@@ -198,22 +310,24 @@ public class SettingsActivity extends AppCompatActivity {
                         prefs.edit().putInt(KEY_CARD_NUMBER, cardNumber).apply();
                         currentCardText.setText("Progress: Card " + cardNumber);
 
-                        // Save to Google Sheets
-                        String sheetName = prefs.getString(KEY_SHEET_NAME, "Sheet1");
-                        apiService.saveProgress("saveProgress", cardNumber, sheetName)
-                                .enqueue(new Callback<com.google.gson.JsonObject>() {
-                                    @Override
-                                    public void onResponse(Call<com.google.gson.JsonObject> call, Response<com.google.gson.JsonObject> response) {
-                                        if (response.isSuccessful()) {
-                                            Log.d(TAG, "Jump to card saved to Google Sheets");
+                        // Save to Google Sheets (if API is configured)
+                        if (apiService != null) {
+                            String sheetName = prefs.getString(KEY_SHEET_NAME, "Sheet1");
+                            apiService.saveProgress("saveProgress", cardNumber, sheetName)
+                                    .enqueue(new Callback<com.google.gson.JsonObject>() {
+                                        @Override
+                                        public void onResponse(Call<com.google.gson.JsonObject> call, Response<com.google.gson.JsonObject> response) {
+                                            if (response.isSuccessful()) {
+                                                Log.d(TAG, "Jump to card saved to Google Sheets");
+                                            }
                                         }
-                                    }
 
-                                    @Override
-                                    public void onFailure(Call<com.google.gson.JsonObject> call, Throwable t) {
-                                        Log.e(TAG, "Failed to save jump to Google Sheets", t);
-                                    }
-                                });
+                                        @Override
+                                        public void onFailure(Call<com.google.gson.JsonObject> call, Throwable t) {
+                                            Log.e(TAG, "Failed to save jump to Google Sheets", t);
+                                        }
+                                    });
+                        }
 
                         Toast.makeText(this, "Jumped to Card " + cardNumber, Toast.LENGTH_SHORT).show();
                     } catch (NumberFormatException e) {
@@ -232,22 +346,24 @@ public class SettingsActivity extends AppCompatActivity {
                     prefs.edit().putInt(KEY_CARD_NUMBER, 1).apply();
                     currentCardText.setText("Progress: Card 1");
 
-                    // Save to Google Sheets
-                    String sheetName = prefs.getString(KEY_SHEET_NAME, "Sheet1");
-                    apiService.saveProgress("saveProgress", 1, sheetName)
-                            .enqueue(new Callback<com.google.gson.JsonObject>() {
-                                @Override
-                                public void onResponse(Call<com.google.gson.JsonObject> call, Response<com.google.gson.JsonObject> response) {
-                                    if (response.isSuccessful()) {
-                                        Log.d(TAG, "Progress reset saved to Google Sheets");
+                    // Save to Google Sheets (if API is configured)
+                    if (apiService != null) {
+                        String sheetName = prefs.getString(KEY_SHEET_NAME, "Sheet1");
+                        apiService.saveProgress("saveProgress", 1, sheetName)
+                                .enqueue(new Callback<com.google.gson.JsonObject>() {
+                                    @Override
+                                    public void onResponse(Call<com.google.gson.JsonObject> call, Response<com.google.gson.JsonObject> response) {
+                                        if (response.isSuccessful()) {
+                                            Log.d(TAG, "Progress reset saved to Google Sheets");
+                                        }
                                     }
-                                }
 
-                                @Override
-                                public void onFailure(Call<com.google.gson.JsonObject> call, Throwable t) {
-                                    Log.e(TAG, "Failed to save reset to Google Sheets", t);
-                                }
-                            });
+                                    @Override
+                                    public void onFailure(Call<com.google.gson.JsonObject> call, Throwable t) {
+                                        Log.e(TAG, "Failed to save reset to Google Sheets", t);
+                                    }
+                                });
+                    }
 
                     Toast.makeText(this, "Progress reset to Card 1", Toast.LENGTH_SHORT).show();
                 })

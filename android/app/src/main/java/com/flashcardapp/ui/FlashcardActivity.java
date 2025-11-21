@@ -36,6 +36,7 @@ import androidx.core.content.ContextCompat;
 import com.flashcardapp.R;
 import com.flashcardapp.models.Flashcard;
 import com.flashcardapp.models.FlashcardBatch;
+import com.flashcardapp.models.SheetList;
 import com.flashcardapp.models.StartingInfo;
 import com.flashcardapp.network.ApiClient;
 import com.flashcardapp.network.QuizApiService;
@@ -112,10 +113,31 @@ public class FlashcardActivity extends AppCompatActivity {
         initViews();
         setupClickListeners();
 
-        apiService = ApiClient.getApiService();
+        // Check if API URL is configured
+        if (!ApiClient.isConfigured(this)) {
+            showError("Please configure API URL in Settings");
+            Toast.makeText(this, "Please set API URL in Settings", Toast.LENGTH_LONG).show();
+            // Open settings automatically
+            openSettings();
+            return;
+        }
 
-        // Load starting position
-        loadStartingInfo();
+        apiService = ApiClient.getApiService(this);
+
+        if (apiService == null) {
+            showError("API service not available. Please check Settings.");
+            return;
+        }
+
+        // Check if sheet name is set, if not, fetch available sheets
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        if (!prefs.contains(KEY_SHEET_NAME)) {
+            Log.d(TAG, "Sheet name not set, fetching available sheets...");
+            fetchAndSetDefaultSheet();
+        } else {
+            // Load starting position
+            loadStartingInfo();
+        }
     }
 
     private void initViews() {
@@ -203,6 +225,15 @@ public class FlashcardActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+
+        // Reload API service in case URL was changed in Settings
+        apiService = ApiClient.getApiService(this);
+
+        if (apiService == null) {
+            // API URL not configured, don't try to load cards
+            return;
+        }
+
         // Clear cache and reload if sheet was changed in settings
         SharedPreferences preferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         String sheetName = preferences.getString(KEY_SHEET_NAME, "Sheet1");
@@ -221,6 +252,49 @@ public class FlashcardActivity extends AppCompatActivity {
         }
 
         loadCurrentCard();
+    }
+
+    private void fetchAndSetDefaultSheet() {
+        showLoading(true);
+
+        apiService.getAvailableSheets("getAvailableSheets").enqueue(new Callback<SheetList>() {
+            @Override
+            public void onResponse(Call<SheetList> call, Response<SheetList> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    List<String> sheets = response.body().getSheets();
+                    if (sheets != null && !sheets.isEmpty()) {
+                        // Use first sheet as default (skip Settings sheet if present)
+                        String defaultSheet = sheets.get(0);
+                        if (defaultSheet.equals("Settings") && sheets.size() > 1) {
+                            defaultSheet = sheets.get(1);
+                        }
+
+                        // Save default sheet name
+                        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+                        prefs.edit().putString(KEY_SHEET_NAME, defaultSheet).apply();
+
+                        Log.d(TAG, "Set default sheet to: " + defaultSheet);
+                        Toast.makeText(FlashcardActivity.this, "Using sheet: " + defaultSheet, Toast.LENGTH_SHORT).show();
+
+                        // Now load starting info
+                        loadStartingInfo();
+                    } else {
+                        showLoading(false);
+                        showError("No sheets found in spreadsheet");
+                    }
+                } else {
+                    showLoading(false);
+                    showError("Failed to fetch sheets. Please check Settings.");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<SheetList> call, Throwable t) {
+                showLoading(false);
+                Log.e(TAG, "Error fetching sheets", t);
+                showError("Network error. Please check Settings.");
+            }
+        });
     }
 
     private void loadStartingInfo() {
@@ -269,7 +343,7 @@ public class FlashcardActivity extends AppCompatActivity {
             Log.d(TAG, "Loading card " + currentCardNumber + " from cache");
             currentFlashcard = cardCache.get(currentCardNumber);
             displayFlashcard(currentFlashcard);
-            saveCurrentProgress();
+            // Don't save progress here - only save when user navigates
 
             // Prefetch more cards if needed
             prefetchCards();
@@ -293,7 +367,7 @@ public class FlashcardActivity extends AppCompatActivity {
                             currentFlashcard = response.body();
                             cardCache.put(currentCardNumber, currentFlashcard);
                             displayFlashcard(currentFlashcard);
-                            saveCurrentProgress();
+                            // Don't save progress here - only save when user navigates
 
                             // Prefetch more cards after first load
                             prefetchCards();
@@ -374,6 +448,7 @@ public class FlashcardActivity extends AppCompatActivity {
         }
         currentCardNumber++;
         loadCurrentCard();
+        saveCurrentProgress(); // Save only when user navigates
     }
 
     private void loadPreviousCard() {
@@ -383,6 +458,7 @@ public class FlashcardActivity extends AppCompatActivity {
         }
         currentCardNumber--;
         loadCurrentCard();
+        saveCurrentProgress(); // Save only when user navigates
     }
 
     private void displayFlashcard(Flashcard flashcard) {
@@ -580,6 +656,16 @@ public class FlashcardActivity extends AppCompatActivity {
     }
 
     private void saveCurrentProgress() {
+        // Validate card number before saving
+        if (currentCardNumber < 1) {
+            Log.e(TAG, "Invalid card number detected: " + currentCardNumber + ", not saving");
+            return;
+        }
+
+        if (currentFlashcard != null && currentCardNumber > currentFlashcard.getTotalCards()) {
+            Log.w(TAG, "Card number " + currentCardNumber + " exceeds total cards " + currentFlashcard.getTotalCards());
+        }
+
         SharedPreferences preferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         preferences.edit()
                 .putInt(KEY_CARD_NUMBER, currentCardNumber)
@@ -589,14 +675,18 @@ public class FlashcardActivity extends AppCompatActivity {
 
         // Also save to Google Sheets with sheet name
         String sheetName = preferences.getString(KEY_SHEET_NAME, "Sheet1");
-        apiService.saveProgress("saveProgress", currentCardNumber, sheetName)
+        final int cardToSave = currentCardNumber; // Capture value to avoid race condition
+
+        Log.d(TAG, "Sending to Google Sheets - Sheet: " + sheetName + ", Card: " + cardToSave);
+
+        apiService.saveProgress("saveProgress", cardToSave, sheetName)
                 .enqueue(new Callback<com.google.gson.JsonObject>() {
                     @Override
                     public void onResponse(Call<com.google.gson.JsonObject> call, Response<com.google.gson.JsonObject> response) {
                         if (response.isSuccessful()) {
-                            Log.d(TAG, "Progress saved to Google Sheets for " + sheetName + ": Card=" + currentCardNumber);
+                            Log.d(TAG, "Progress saved to Google Sheets for " + sheetName + ": Card=" + cardToSave);
                         } else {
-                            Log.w(TAG, "Failed to save progress to Google Sheets");
+                            Log.w(TAG, "Failed to save progress to Google Sheets: " + response.code());
                         }
                     }
 
@@ -952,6 +1042,8 @@ public class FlashcardActivity extends AppCompatActivity {
         if (isPlaying) {
             stopPlayback();
         }
+        // Save progress when leaving the app
+        saveCurrentProgress();
     }
 
     @Override
