@@ -39,6 +39,7 @@ public class SettingsActivity extends AppCompatActivity {
     private MaterialButton selectSheetButton;
     private MaterialButton jumpToCardButton;
     private MaterialButton resetProgressButton;
+    private MaterialButton backToFlashcardsButton;
     private SharedPreferences prefs;
     private QuizApiService apiService;
 
@@ -65,6 +66,7 @@ public class SettingsActivity extends AppCompatActivity {
         selectSheetButton = findViewById(R.id.selectSheetButton);
         jumpToCardButton = findViewById(R.id.jumpToCardButton);
         resetProgressButton = findViewById(R.id.resetProgressButton);
+        backToFlashcardsButton = findViewById(R.id.backToFlashcardsButton);
     }
 
     private void loadApiUrl() {
@@ -125,6 +127,7 @@ public class SettingsActivity extends AppCompatActivity {
         selectSheetButton.setOnClickListener(v -> fetchAndShowSheetSelection());
         jumpToCardButton.setOnClickListener(v -> showJumpToCardDialog());
         resetProgressButton.setOnClickListener(v -> resetProgress());
+        backToFlashcardsButton.setOnClickListener(v -> finish());
     }
 
     private void saveApiUrl() {

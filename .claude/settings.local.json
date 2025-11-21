@@ -32,7 +32,13 @@
       "Bash(git remote add:*)",
       "Bash(git push:*)",
       "Bash(cmd.exe:*)",
-      "Bash(/mnt/c/Windows/System32/cmd.exe /c \"cd C:\\src\\projects\\flashcard\\android && gradlew.bat assembleDebug\")"
+      "Bash(/mnt/c/Windows/System32/cmd.exe /c \"cd C:\\src\\projects\\flashcard\\android && gradlew.bat assembleDebug\")",
+      "Bash(mkdir:*)",
+      "Bash(pip3 install:*)",
+      "Bash(cp:*)",
+      "Bash(tree:*)",
+      "Bash(identify:*)",
+      "Bash(python3 -m pip install --user Pillow)"
     ],
     "deny": [],
     "ask": []

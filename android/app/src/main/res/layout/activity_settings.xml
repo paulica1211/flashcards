@@ -192,6 +192,16 @@
 
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Back to Flashcards Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/backToFlashcardsButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Back to Flashcards"
+            app:icon="@android:drawable/ic_menu_revert"
+            style="@style/Widget.MaterialComponents.Button" />
+
     </LinearLayout>
 
 </ScrollView>

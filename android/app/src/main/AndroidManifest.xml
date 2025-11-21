@@ -37,7 +37,6 @@
 
         <activity
             android:name=".ui.FlashcardActivity"
-            android:configChanges="orientation|screenSize"
             android:exported="false"
             android:theme="@style/AppTheme" />
 

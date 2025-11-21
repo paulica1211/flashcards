@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="8dp"
+    android:background="#F5F5F5">
+
+    <!-- Compact Top Bar - Single Row with Progress, Importance, and Settings -->
+    <LinearLayout
+        android:id="@+id/topBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="0dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- Card Progress -->
+        <TextView
+            android:id="@+id/cardProgressText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Card 1 of 10"
+            android:textSize="14sp"
+            android:textColor="#666666"
+            android:gravity="start|center_vertical" />
+
+        <!-- Importance Label -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Imp: "
+            android:textSize="11sp"
+            android:textColor="#666666"
+            android:layout_marginEnd="2dp" />
+
+        <!-- Importance Buttons -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/importance0Button"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:padding="0dp"
+            android:text="0"
+            android:textSize="12sp"
+            android:layout_marginEnd="2dp"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/importance1Button"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:padding="0dp"
+            android:text="1"
+            android:textSize="12sp"
+            android:layout_marginEnd="2dp"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/importance2Button"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:padding="0dp"
+            android:text="2"
+            android:textSize="12sp"
+            android:layout_marginEnd="2dp"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/importance3Button"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:padding="0dp"
+            android:text="3"
+            android:textSize="12sp"
+            android:layout_marginEnd="4dp"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+        <!-- Settings Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/settingsButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Settings"
+            app:icon="@android:drawable/ic_menu_preferences"
+            style="@style/Widget.MaterialComponents.Button.TextButton" />
+
+    </LinearLayout>
+
+    <!-- Combined Bottom Bar - Audio Controls + Navigation Buttons -->
+    <LinearLayout
+        android:id="@+id/navigationButtons"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="0dp"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <!-- Audio Controls on Left Side -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/recordButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="3dp"
+            android:text="🎤"
+            android:textSize="12sp"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/playButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:text="▶️"
+            android:textSize="12sp"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:enabled="false"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/deleteAudioButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:minWidth="0dp"
+            android:text="🗑"
+            android:visibility="gone"
+            style="@style/Widget.MaterialComponents.Button.TextButton" />
+
+        <!-- Navigation Buttons on Right Side -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/previousButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1.2"
+            android:layout_marginEnd="4dp"
+            android:text="Previous"
+            android:textSize="12sp"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/nextButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1.2"
+            android:text="Next"
+            android:textSize="12sp"
+            style="@style/Widget.MaterialComponents.Button" />
+
+    </LinearLayout>
+
+    <!-- Flashcard Container - Takes Maximum Available Height -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/flashcardContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/topBar"
+        android:layout_above="@id/navigationButtons"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="4dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="8dp"
+        android:clickable="true"
+        android:focusable="true">
+
+        <ScrollView
+            android:id="@+id/scrollView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="12dp"
+            android:fillViewport="true"
+            android:scrollbars="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center">
+
+                <!-- Front Side Text -->
+                <TextView
+                    android:id="@+id/frontSideText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Front Side"
+                    android:textSize="18sp"
+                    android:textColor="#000000"
+                    android:lineSpacingMultiplier="1.3"
+                    android:visibility="visible"
+                    android:scrollbars="vertical" />
+
+                <!-- Back Side Text -->
+                <TextView
+                    android:id="@+id/backSideText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Back Side"
+                    android:textSize="18sp"
+                    android:textColor="#000000"
+                    android:lineSpacingMultiplier="1.3"
+                    android:visibility="gone"
+                    android:scrollbars="vertical" />
+
+            </LinearLayout>
+
+        </ScrollView>
+
+    </androidx.cardview.widget.CardView>
+
+    <!-- Audio Controls (hidden, for compatibility) -->
+    <LinearLayout
+        android:id="@+id/audioControls"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+
+    <!-- Loading indicator -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:visibility="gone" />
+
+</RelativeLayout>
