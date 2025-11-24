@@ -62,6 +62,7 @@ public class FlashcardActivity extends AppCompatActivity {
     private static final String KEY_CARD_NUMBER = "current_card_number";
     private static final String KEY_SHEET_NAME = "selected_sheet_name";
     private static final String KEY_TTS_SPEED = "tts_speech_rate";
+    private static final String KEY_TTS_AUTO_PLAY = "tts_auto_play";
     private static final int PREFETCH_COUNT = 10; // Number of cards to prefetch
     private static final int SWIPE_THRESHOLD = 100;
     private static final int SWIPE_VELOCITY_THRESHOLD = 100;
@@ -511,6 +512,16 @@ public class FlashcardActivity extends AppCompatActivity {
         if (isSpeaking) {
             stopTTS();
         }
+
+        // Auto-play if enabled
+        if (shouldAutoPlay()) {
+            speakCurrentSide();
+        }
+    }
+
+    private boolean shouldAutoPlay() {
+        SharedPreferences preferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        return preferences.getBoolean(KEY_TTS_AUTO_PLAY, false);
     }
 
     private void updateImportanceButtons(int importance) {
@@ -622,6 +633,11 @@ public class FlashcardActivity extends AppCompatActivity {
         isFlipping = true;
         Log.d(TAG, "Flipping card from " + (isShowingFront ? "front" : "back"));
 
+        // Stop current TTS if playing
+        if (isSpeaking) {
+            stopTTS();
+        }
+
         // Flip with animation
         final float scale = getResources().getDisplayMetrics().density;
         flashcardContainer.setCameraDistance(8000 * scale);
@@ -644,6 +660,11 @@ public class FlashcardActivity extends AppCompatActivity {
             frontSideText.postDelayed(() -> {
                 frontSideText.setVisibility(View.GONE);
                 isFlipping = false;
+
+                // Auto-play back side after flip animation
+                if (shouldAutoPlay()) {
+                    speakCurrentSide();
+                }
             }, 200);
 
             isShowingFront = false;
@@ -662,6 +683,11 @@ public class FlashcardActivity extends AppCompatActivity {
             backSideText.postDelayed(() -> {
                 backSideText.setVisibility(View.GONE);
                 isFlipping = false;
+
+                // Auto-play front side after flip animation
+                if (shouldAutoPlay()) {
+                    speakCurrentSide();
+                }
             }, 200);
 
             isShowingFront = true;

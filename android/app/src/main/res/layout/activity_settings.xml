@@ -209,9 +209,39 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Adjust reading speed"
+                    android:text="Adjust reading speed and auto-play settings"
                     android:textSize="12sp"
                     android:textColor="#666666"
+                    android:layout_marginBottom="12dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="12dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Auto-play"
+                        android:textSize="14sp"
+                        android:textColor="#333333" />
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/autoPlaySwitch"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Automatically reads both front and back sides when displaying or flipping cards"
+                    android:textSize="11sp"
+                    android:textColor="#999999"
                     android:layout_marginBottom="12dp" />
 
                 <LinearLayout

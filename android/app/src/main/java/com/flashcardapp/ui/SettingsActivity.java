@@ -14,6 +14,7 @@ import android.widget.Toast;
 import java.util.Locale;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SwitchCompat;
 
 import com.flashcardapp.R;
 import com.flashcardapp.models.SheetList;
@@ -35,6 +36,7 @@ public class SettingsActivity extends AppCompatActivity {
     private static final String KEY_SHEET_NAME = "selected_sheet_name";
     private static final String KEY_CARD_NUMBER = "current_card_number";
     private static final String KEY_TTS_SPEED = "tts_speech_rate";
+    private static final String KEY_TTS_AUTO_PLAY = "tts_auto_play";
 
     private EditText apiUrlEditText;
     private MaterialButton testConnectionButton;
@@ -46,6 +48,7 @@ public class SettingsActivity extends AppCompatActivity {
     private MaterialButton backToFlashcardsButton;
     private SeekBar ttsSpeedSeekBar;
     private TextView ttsSpeedValueText;
+    private SwitchCompat autoPlaySwitch;
     private MaterialButton testTtsButton;
     private SharedPreferences prefs;
     private QuizApiService apiService;
@@ -78,6 +81,7 @@ public class SettingsActivity extends AppCompatActivity {
         backToFlashcardsButton = findViewById(R.id.backToFlashcardsButton);
         ttsSpeedSeekBar = findViewById(R.id.ttsSpeedSeekBar);
         ttsSpeedValueText = findViewById(R.id.ttsSpeedValueText);
+        autoPlaySwitch = findViewById(R.id.autoPlaySwitch);
         testTtsButton = findViewById(R.id.testTtsButton);
     }
 
@@ -166,6 +170,12 @@ public class SettingsActivity extends AppCompatActivity {
         });
 
         testTtsButton.setOnClickListener(v -> testTtsVoice());
+
+        // Auto-play switch listener
+        autoPlaySwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            prefs.edit().putBoolean(KEY_TTS_AUTO_PLAY, isChecked).apply();
+            Log.d(TAG, "Auto-play set to: " + isChecked);
+        });
     }
 
     private void saveApiUrl() {
@@ -408,7 +418,10 @@ public class SettingsActivity extends AppCompatActivity {
             textToSpeech.setSpeechRate(savedSpeed);
         }
 
-        Log.d(TAG, "Loaded TTS speed: " + savedSpeed);
+        boolean autoPlay = prefs.getBoolean(KEY_TTS_AUTO_PLAY, false);
+        autoPlaySwitch.setChecked(autoPlay);
+
+        Log.d(TAG, "Loaded TTS speed: " + savedSpeed + ", Auto-play: " + autoPlay);
     }
 
     private float progressToSpeed(int progress) {
