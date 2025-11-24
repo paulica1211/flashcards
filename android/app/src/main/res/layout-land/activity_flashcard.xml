@@ -211,6 +211,17 @@
                 android:orientation="vertical"
                 android:gravity="center">
 
+                <!-- Front Side Pronunciation (D column) -->
+                <TextView
+                    android:id="@+id/frontPronunciationText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:textColor="#999999"
+                    android:gravity="start"
+                    android:visibility="gone"
+                    android:layout_marginBottom="4dp" />
+
                 <!-- Front Side Text -->
                 <TextView
                     android:id="@+id/frontSideText"
@@ -222,6 +233,18 @@
                     android:lineSpacingMultiplier="1.3"
                     android:visibility="visible"
                     android:scrollbars="vertical" />
+
+                <!-- Back Side Pronunciation (E column) -->
+                <TextView
+                    android:id="@+id/backPronunciationText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:textColor="#999999"
+                    android:gravity="start"
+                    android:visibility="gone"
+                    android:layout_marginBottom="4dp"
+                    android:layout_marginTop="16dp" />
 
                 <!-- Back Side Text -->
                 <TextView

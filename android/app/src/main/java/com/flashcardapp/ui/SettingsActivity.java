@@ -6,8 +6,11 @@ import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
 import android.text.InputType;
 import android.util.Log;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.SeekBar;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -37,6 +40,7 @@ public class SettingsActivity extends AppCompatActivity {
     private static final String KEY_CARD_NUMBER = "current_card_number";
     private static final String KEY_TTS_SPEED = "tts_speech_rate";
     private static final String KEY_TTS_AUTO_PLAY = "tts_auto_play";
+    private static final String KEY_TTS_LANGUAGE = "tts_language";
 
     private EditText apiUrlEditText;
     private MaterialButton testConnectionButton;
@@ -46,6 +50,7 @@ public class SettingsActivity extends AppCompatActivity {
     private MaterialButton selectSheetButton;
     private MaterialButton jumpToCardButton;
     private MaterialButton backToFlashcardsButton;
+    private Spinner ttsLanguageSpinner;
     private SeekBar ttsSpeedSeekBar;
     private TextView ttsSpeedValueText;
     private SwitchCompat autoPlaySwitch;
@@ -66,6 +71,7 @@ public class SettingsActivity extends AppCompatActivity {
         updateApiService();
         updateCurrentSheetDisplay();
         initializeTTS();
+        setupTtsLanguageSpinner();
         loadTtsSettings();
         setupListeners();
     }
@@ -79,6 +85,7 @@ public class SettingsActivity extends AppCompatActivity {
         selectSheetButton = findViewById(R.id.selectSheetButton);
         jumpToCardButton = findViewById(R.id.jumpToCardButton);
         backToFlashcardsButton = findViewById(R.id.backToFlashcardsButton);
+        ttsLanguageSpinner = findViewById(R.id.ttsLanguageSpinner);
         ttsSpeedSeekBar = findViewById(R.id.ttsSpeedSeekBar);
         ttsSpeedValueText = findViewById(R.id.ttsSpeedValueText);
         autoPlaySwitch = findViewById(R.id.autoPlaySwitch);
@@ -391,14 +398,73 @@ public class SettingsActivity extends AppCompatActivity {
 
     // ==================== TTS Methods ====================
 
+    private void setupTtsLanguageSpinner() {
+        // Setup spinner with language options
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
+                this,
+                R.array.tts_languages,
+                android.R.layout.simple_spinner_item
+        );
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        ttsLanguageSpinner.setAdapter(adapter);
+
+        // Set listener for language selection
+        ttsLanguageSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, android.view.View view, int position, long id) {
+                String[] languageCodes = getResources().getStringArray(R.array.tts_language_codes);
+                String selectedLanguage = languageCodes[position];
+
+                // Save selection
+                prefs.edit().putString(KEY_TTS_LANGUAGE, selectedLanguage).apply();
+                Log.d(TAG, "TTS language changed to: " + selectedLanguage);
+
+                // Apply to TTS engine immediately
+                applyTtsLanguage(selectedLanguage);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // Do nothing
+            }
+        });
+    }
+
+    private void applyTtsLanguage(String languageCode) {
+        if (textToSpeech == null) return;
+
+        Locale locale;
+        switch (languageCode) {
+            case "ja":
+                locale = Locale.JAPANESE;
+                break;
+            case "en":
+                locale = Locale.ENGLISH;
+                break;
+            case "zh":
+                locale = Locale.CHINESE;
+                break;
+            default:
+                locale = Locale.JAPANESE;
+                break;
+        }
+
+        int result = textToSpeech.setLanguage(locale);
+        if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+            Toast.makeText(this, "Language not supported", Toast.LENGTH_SHORT).show();
+            Log.w(TAG, "Language not supported: " + languageCode);
+        } else {
+            Log.d(TAG, "TTS language set to: " + locale.getDisplayLanguage());
+        }
+    }
+
     private void initializeTTS() {
         textToSpeech = new TextToSpeech(this, status -> {
             if (status == TextToSpeech.SUCCESS) {
-                int result = textToSpeech.setLanguage(Locale.JAPANESE);
-                if (result == TextToSpeech.LANG_MISSING_DATA ||
-                    result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                    textToSpeech.setLanguage(Locale.ENGLISH);
-                }
+                // Apply saved language
+                String savedLanguage = prefs.getString(KEY_TTS_LANGUAGE, "ja");
+                applyTtsLanguage(savedLanguage);
+
                 testTtsButton.setEnabled(true);
                 Log.d(TAG, "TTS initialized in Settings");
             } else {
@@ -421,7 +487,19 @@ public class SettingsActivity extends AppCompatActivity {
         boolean autoPlay = prefs.getBoolean(KEY_TTS_AUTO_PLAY, false);
         autoPlaySwitch.setChecked(autoPlay);
 
-        Log.d(TAG, "Loaded TTS speed: " + savedSpeed + ", Auto-play: " + autoPlay);
+        // Load saved language and set spinner position
+        String savedLanguage = prefs.getString(KEY_TTS_LANGUAGE, "ja");
+        String[] languageCodes = getResources().getStringArray(R.array.tts_language_codes);
+        int languagePosition = 0;
+        for (int i = 0; i < languageCodes.length; i++) {
+            if (languageCodes[i].equals(savedLanguage)) {
+                languagePosition = i;
+                break;
+            }
+        }
+        ttsLanguageSpinner.setSelection(languagePosition);
+
+        Log.d(TAG, "Loaded TTS - Speed: " + savedSpeed + ", Auto-play: " + autoPlay + ", Language: " + savedLanguage);
     }
 
     private float progressToSpeed(int progress) {

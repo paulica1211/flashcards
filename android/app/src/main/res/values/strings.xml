@@ -1,4 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Flashcard App</string>
+
+    <!-- TTS Language Options -->
+    <string-array name="tts_languages">
+        <item>Japanese (日本語)</item>
+        <item>English</item>
+        <item>Chinese (中文)</item>
+    </string-array>
+
+    <string-array name="tts_language_codes">
+        <item>ja</item>
+        <item>en</item>
+        <item>zh</item>
+    </string-array>
 </resources>

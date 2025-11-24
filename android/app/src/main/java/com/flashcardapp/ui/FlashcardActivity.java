@@ -63,6 +63,7 @@ public class FlashcardActivity extends AppCompatActivity {
     private static final String KEY_SHEET_NAME = "selected_sheet_name";
     private static final String KEY_TTS_SPEED = "tts_speech_rate";
     private static final String KEY_TTS_AUTO_PLAY = "tts_auto_play";
+    private static final String KEY_TTS_LANGUAGE = "tts_language";
     private static final int PREFETCH_COUNT = 10; // Number of cards to prefetch
     private static final int SWIPE_THRESHOLD = 100;
     private static final int SWIPE_VELOCITY_THRESHOLD = 100;
@@ -76,6 +77,8 @@ public class FlashcardActivity extends AppCompatActivity {
     private android.widget.ScrollView scrollView;
     private TextView frontSideText;
     private TextView backSideText;
+    private TextView frontPronunciationText;
+    private TextView backPronunciationText;
     private MaterialButton previousButton;
     private MaterialButton nextButton;
     private MaterialButton settingsButton;
@@ -159,6 +162,8 @@ public class FlashcardActivity extends AppCompatActivity {
         scrollView = findViewById(R.id.scrollView);
         frontSideText = findViewById(R.id.frontSideText);
         backSideText = findViewById(R.id.backSideText);
+        frontPronunciationText = findViewById(R.id.frontPronunciationText);
+        backPronunciationText = findViewById(R.id.backPronunciationText);
         previousButton = findViewById(R.id.previousButton);
         nextButton = findViewById(R.id.nextButton);
         settingsButton = findViewById(R.id.settingsButton);
@@ -260,8 +265,8 @@ public class FlashcardActivity extends AppCompatActivity {
             currentCardNumber = savedCardNumber;
         }
 
-        // Load TTS speed setting
-        loadTtsSpeed();
+        // Load TTS settings
+        loadTtsSettings();
 
         // Only clear cache if we have cards cached (avoid clearing on first load)
         if (!cardCache.isEmpty()) {
@@ -486,6 +491,17 @@ public class FlashcardActivity extends AppCompatActivity {
         frontSideText.setText(parseHtml(flashcard.getFrontSide()));
         backSideText.setText(parseHtml(flashcard.getBackSide()));
 
+        // Set pronunciation text
+        String frontPronunciation = flashcard.getFrontPronunciation();
+        if (frontPronunciation != null && !frontPronunciation.isEmpty()) {
+            frontPronunciationText.setText(frontPronunciation);
+        }
+
+        String backPronunciation = flashcard.getBackPronunciation();
+        if (backPronunciation != null && !backPronunciation.isEmpty()) {
+            backPronunciationText.setText(backPronunciation);
+        }
+
         // Pre-parse and cache text for TTS (improves TTS response time)
         cachedFrontText = stripHtmlTags(flashcard.getFrontSide());
         cachedBackText = stripHtmlTags(flashcard.getBackSide());
@@ -495,6 +511,14 @@ public class FlashcardActivity extends AppCompatActivity {
         isFlipping = false;
         frontSideText.setVisibility(View.VISIBLE);
         backSideText.setVisibility(View.GONE);
+
+        // Show front pronunciation only (D column)
+        if (frontPronunciation != null && !frontPronunciation.isEmpty()) {
+            frontPronunciationText.setVisibility(View.VISIBLE);
+        } else {
+            frontPronunciationText.setVisibility(View.GONE);
+        }
+        backPronunciationText.setVisibility(View.GONE);
 
         // Reset any animations
         frontSideText.setAlpha(1.0f);
@@ -657,6 +681,16 @@ public class FlashcardActivity extends AppCompatActivity {
             backAnim.start();
 
             backSideText.setVisibility(View.VISIBLE);
+
+            // Show back pronunciation (E column), hide front pronunciation
+            frontPronunciationText.setVisibility(View.GONE);
+            if (currentFlashcard != null && currentFlashcard.getBackPronunciation() != null
+                    && !currentFlashcard.getBackPronunciation().isEmpty()) {
+                backPronunciationText.setVisibility(View.VISIBLE);
+            } else {
+                backPronunciationText.setVisibility(View.GONE);
+            }
+
             frontSideText.postDelayed(() -> {
                 frontSideText.setVisibility(View.GONE);
                 isFlipping = false;
@@ -680,6 +714,16 @@ public class FlashcardActivity extends AppCompatActivity {
             frontAnim.start();
 
             frontSideText.setVisibility(View.VISIBLE);
+
+            // Show front pronunciation (D column), hide back pronunciation
+            backPronunciationText.setVisibility(View.GONE);
+            if (currentFlashcard != null && currentFlashcard.getFrontPronunciation() != null
+                    && !currentFlashcard.getFrontPronunciation().isEmpty()) {
+                frontPronunciationText.setVisibility(View.VISIBLE);
+            } else {
+                frontPronunciationText.setVisibility(View.GONE);
+            }
+
             backSideText.postDelayed(() -> {
                 backSideText.setVisibility(View.GONE);
                 isFlipping = false;
@@ -1076,16 +1120,11 @@ public class FlashcardActivity extends AppCompatActivity {
     private void initializeTTS() {
         textToSpeech = new TextToSpeech(this, status -> {
             if (status == TextToSpeech.SUCCESS) {
-                int result = textToSpeech.setLanguage(Locale.JAPANESE);
-                if (result == TextToSpeech.LANG_MISSING_DATA ||
-                    result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                    textToSpeech.setLanguage(Locale.ENGLISH);
-                }
                 ttsButton.setEnabled(true);
                 Log.d(TAG, "TTS initialized successfully");
 
-                // Load and apply speed setting
-                loadTtsSpeed();
+                // Load and apply settings
+                loadTtsSettings();
             } else {
                 ttsButton.setEnabled(false);
                 Log.e(TAG, "TTS initialization failed");
@@ -1094,13 +1133,40 @@ public class FlashcardActivity extends AppCompatActivity {
         });
     }
 
-    private void loadTtsSpeed() {
+    private void loadTtsSettings() {
         if (textToSpeech == null) return;
 
         SharedPreferences preferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+
+        // Load speed
         float speed = preferences.getFloat(KEY_TTS_SPEED, 1.0f);
         textToSpeech.setSpeechRate(speed);
-        Log.d(TAG, "TTS speed loaded and applied: " + speed);
+
+        // Load language
+        String language = preferences.getString(KEY_TTS_LANGUAGE, "ja");
+        Locale locale;
+        switch (language) {
+            case "ja":
+                locale = Locale.JAPANESE;
+                break;
+            case "en":
+                locale = Locale.ENGLISH;
+                break;
+            case "zh":
+                locale = Locale.CHINESE;
+                break;
+            default:
+                locale = Locale.JAPANESE;
+                break;
+        }
+
+        int result = textToSpeech.setLanguage(locale);
+        if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+            Log.w(TAG, "Language not supported: " + language + ", falling back to English");
+            textToSpeech.setLanguage(Locale.ENGLISH);
+        }
+
+        Log.d(TAG, "TTS settings loaded - Speed: " + speed + ", Language: " + language);
     }
 
     private void toggleTTS() {
