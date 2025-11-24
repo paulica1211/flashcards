@@ -14,6 +14,8 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
 import android.text.Html;
 import android.text.Spanned;
 import android.util.Log;
@@ -46,6 +48,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import retrofit2.Call;
@@ -58,6 +61,7 @@ public class FlashcardActivity extends AppCompatActivity {
     private static final String PREFS_NAME = "FlashcardPreferences";
     private static final String KEY_CARD_NUMBER = "current_card_number";
     private static final String KEY_SHEET_NAME = "selected_sheet_name";
+    private static final String KEY_TTS_SPEED = "tts_speech_rate";
     private static final int PREFETCH_COUNT = 10; // Number of cards to prefetch
     private static final int SWIPE_THRESHOLD = 100;
     private static final int SWIPE_VELOCITY_THRESHOLD = 100;
@@ -74,6 +78,7 @@ public class FlashcardActivity extends AppCompatActivity {
     private MaterialButton previousButton;
     private MaterialButton nextButton;
     private MaterialButton settingsButton;
+    private MaterialButton ttsButton;
     private MaterialButton importance0Button;
     private MaterialButton importance1Button;
     private MaterialButton importance2Button;
@@ -91,6 +96,12 @@ public class FlashcardActivity extends AppCompatActivity {
     private MediaPlayer mediaPlayer;
     private boolean isRecording = false;
     private boolean isPlaying = false;
+
+    // TTS
+    private TextToSpeech textToSpeech;
+    private boolean isSpeaking = false;
+    private String cachedFrontText;
+    private String cachedBackText;
 
     // Data
     private Flashcard currentFlashcard;
@@ -112,6 +123,7 @@ public class FlashcardActivity extends AppCompatActivity {
 
         initViews();
         setupClickListeners();
+        initializeTTS();
 
         // Check if API URL is configured
         if (!ApiClient.isConfigured(this)) {
@@ -149,6 +161,7 @@ public class FlashcardActivity extends AppCompatActivity {
         previousButton = findViewById(R.id.previousButton);
         nextButton = findViewById(R.id.nextButton);
         settingsButton = findViewById(R.id.settingsButton);
+        ttsButton = findViewById(R.id.ttsButton);
         importance0Button = findViewById(R.id.importance0Button);
         importance1Button = findViewById(R.id.importance1Button);
         importance2Button = findViewById(R.id.importance2Button);
@@ -204,6 +217,7 @@ public class FlashcardActivity extends AppCompatActivity {
         previousButton.setOnClickListener(v -> loadPreviousCard());
         nextButton.setOnClickListener(v -> loadNextCard());
         settingsButton.setOnClickListener(v -> openSettings());
+        ttsButton.setOnClickListener(v -> toggleTTS());
 
         // Importance level buttons
         importance0Button.setOnClickListener(v -> setImportance(0));
@@ -244,6 +258,9 @@ public class FlashcardActivity extends AppCompatActivity {
             Log.d(TAG, "Card number changed in Settings: " + currentCardNumber + " -> " + savedCardNumber);
             currentCardNumber = savedCardNumber;
         }
+
+        // Load TTS speed setting
+        loadTtsSpeed();
 
         // Only clear cache if we have cards cached (avoid clearing on first load)
         if (!cardCache.isEmpty()) {
@@ -468,6 +485,10 @@ public class FlashcardActivity extends AppCompatActivity {
         frontSideText.setText(parseHtml(flashcard.getFrontSide()));
         backSideText.setText(parseHtml(flashcard.getBackSide()));
 
+        // Pre-parse and cache text for TTS (improves TTS response time)
+        cachedFrontText = stripHtmlTags(flashcard.getFrontSide());
+        cachedBackText = stripHtmlTags(flashcard.getBackSide());
+
         // Reset card state
         isShowingFront = true;
         isFlipping = false;
@@ -485,6 +506,11 @@ public class FlashcardActivity extends AppCompatActivity {
 
         // Update audio buttons UI
         updateAudioButtons();
+
+        // Stop TTS when switching cards
+        if (isSpeaking) {
+            stopTTS();
+        }
     }
 
     private void updateImportanceButtons(int importance) {
@@ -673,7 +699,12 @@ public class FlashcardActivity extends AppCompatActivity {
 
         Log.d(TAG, "Saved progress locally: Card=" + currentCardNumber);
 
-        // Also save to Google Sheets with sheet name
+        // Also save to Google Sheets with sheet name (only if API service is available)
+        if (apiService == null) {
+            Log.w(TAG, "API service not available, skipping Google Sheets sync");
+            return;
+        }
+
         String sheetName = preferences.getString(KEY_SHEET_NAME, "Sheet1");
         final int cardToSave = currentCardNumber; // Capture value to avoid race condition
 
@@ -1014,6 +1045,102 @@ public class FlashcardActivity extends AppCompatActivity {
         }
     }
 
+    // ==================== TTS Methods ====================
+
+    private void initializeTTS() {
+        textToSpeech = new TextToSpeech(this, status -> {
+            if (status == TextToSpeech.SUCCESS) {
+                int result = textToSpeech.setLanguage(Locale.JAPANESE);
+                if (result == TextToSpeech.LANG_MISSING_DATA ||
+                    result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                    textToSpeech.setLanguage(Locale.ENGLISH);
+                }
+                ttsButton.setEnabled(true);
+                Log.d(TAG, "TTS initialized successfully");
+
+                // Load and apply speed setting
+                loadTtsSpeed();
+            } else {
+                ttsButton.setEnabled(false);
+                Log.e(TAG, "TTS initialization failed");
+                Toast.makeText(this, "Text-to-Speech not available", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void loadTtsSpeed() {
+        if (textToSpeech == null) return;
+
+        SharedPreferences preferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        float speed = preferences.getFloat(KEY_TTS_SPEED, 1.0f);
+        textToSpeech.setSpeechRate(speed);
+        Log.d(TAG, "TTS speed loaded and applied: " + speed);
+    }
+
+    private void toggleTTS() {
+        if (isSpeaking) {
+            stopTTS();
+        } else {
+            speakCurrentSide();
+        }
+    }
+
+    private void speakCurrentSide() {
+        if (textToSpeech == null || currentFlashcard == null) return;
+
+        // Use pre-cached text (avoids HTML parsing delay)
+        String textToSpeak = isShowingFront ? cachedFrontText : cachedBackText;
+
+        // Safety check for null or empty cache
+        if (textToSpeak == null || textToSpeak.isEmpty()) {
+            Toast.makeText(this, "No text to speak", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        isSpeaking = true;
+        ttsButton.setText("⏸");
+
+        textToSpeech.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null, "tts_utterance");
+        textToSpeech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+            @Override
+            public void onStart(String utteranceId) {
+                Log.d(TAG, "TTS started");
+            }
+
+            @Override
+            public void onDone(String utteranceId) {
+                runOnUiThread(() -> {
+                    isSpeaking = false;
+                    ttsButton.setText("🔊");
+                    Log.d(TAG, "TTS completed");
+                });
+            }
+
+            @Override
+            public void onError(String utteranceId) {
+                runOnUiThread(() -> {
+                    isSpeaking = false;
+                    ttsButton.setText("🔊");
+                    Log.e(TAG, "TTS error");
+                });
+            }
+        });
+    }
+
+    private void stopTTS() {
+        if (textToSpeech != null) {
+            textToSpeech.stop();
+            isSpeaking = false;
+            ttsButton.setText("🔊");
+            Log.d(TAG, "TTS stopped");
+        }
+    }
+
+    private String stripHtmlTags(String html) {
+        if (html == null || html.isEmpty()) return "";
+        return Html.fromHtml(html, Html.FROM_HTML_MODE_COMPACT).toString().trim();
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -1042,6 +1169,9 @@ public class FlashcardActivity extends AppCompatActivity {
         if (isPlaying) {
             stopPlayback();
         }
+        if (isSpeaking) {
+            stopTTS();
+        }
         // Save progress when leaving the app
         saveCurrentProgress();
     }
@@ -1051,5 +1181,9 @@ public class FlashcardActivity extends AppCompatActivity {
         super.onDestroy();
         releaseMediaRecorder();
         releaseMediaPlayer();
+        if (textToSpeech != null) {
+            textToSpeech.stop();
+            textToSpeech.shutdown();
+        }
     }
 }

@@ -38,7 +38,9 @@
       "Bash(cp:*)",
       "Bash(tree:*)",
       "Bash(identify:*)",
-      "Bash(python3 -m pip install --user Pillow)"
+      "Bash(python3 -m pip install --user Pillow)",
+      "Bash(git tag:*)",
+      "Bash(/mnt/c/Users/hp/AppData/Local/Android/Sdk/platform-tools/adb.exe logcat -d -s AndroidRuntime:E FlashcardActivity:D SettingsActivity:D)"
     ],
     "deny": [],
     "ask": []

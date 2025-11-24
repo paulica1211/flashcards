@@ -31,11 +31,20 @@
                 android:textColor="#666666" />
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/ttsButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🔊"
+                android:minWidth="48dp"
+                android:enabled="false"
+                style="@style/Widget.MaterialComponents.Button.TextButton" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/settingsButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Settings"
-                app:icon="@android:drawable/ic_menu_preferences"
+                android:text="⚙️"
+                android:minWidth="48dp"
                 style="@style/Widget.MaterialComponents.Button.TextButton" />
 
         </LinearLayout>

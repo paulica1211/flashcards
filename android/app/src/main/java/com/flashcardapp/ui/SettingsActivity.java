@@ -3,11 +3,15 @@ package com.flashcardapp.ui;
 import android.app.AlertDialog;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.speech.tts.TextToSpeech;
 import android.text.InputType;
 import android.util.Log;
 import android.widget.EditText;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import java.util.Locale;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -30,6 +34,7 @@ public class SettingsActivity extends AppCompatActivity {
     private static final String PREFS_NAME = "FlashcardPreferences";
     private static final String KEY_SHEET_NAME = "selected_sheet_name";
     private static final String KEY_CARD_NUMBER = "current_card_number";
+    private static final String KEY_TTS_SPEED = "tts_speech_rate";
 
     private EditText apiUrlEditText;
     private MaterialButton testConnectionButton;
@@ -38,10 +43,13 @@ public class SettingsActivity extends AppCompatActivity {
     private TextView currentCardText;
     private MaterialButton selectSheetButton;
     private MaterialButton jumpToCardButton;
-    private MaterialButton resetProgressButton;
     private MaterialButton backToFlashcardsButton;
+    private SeekBar ttsSpeedSeekBar;
+    private TextView ttsSpeedValueText;
+    private MaterialButton testTtsButton;
     private SharedPreferences prefs;
     private QuizApiService apiService;
+    private TextToSpeech textToSpeech;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,6 +62,8 @@ public class SettingsActivity extends AppCompatActivity {
         loadApiUrl();
         updateApiService();
         updateCurrentSheetDisplay();
+        initializeTTS();
+        loadTtsSettings();
         setupListeners();
     }
 
@@ -65,8 +75,10 @@ public class SettingsActivity extends AppCompatActivity {
         currentCardText = findViewById(R.id.currentCardText);
         selectSheetButton = findViewById(R.id.selectSheetButton);
         jumpToCardButton = findViewById(R.id.jumpToCardButton);
-        resetProgressButton = findViewById(R.id.resetProgressButton);
         backToFlashcardsButton = findViewById(R.id.backToFlashcardsButton);
+        ttsSpeedSeekBar = findViewById(R.id.ttsSpeedSeekBar);
+        ttsSpeedValueText = findViewById(R.id.ttsSpeedValueText);
+        testTtsButton = findViewById(R.id.testTtsButton);
     }
 
     private void loadApiUrl() {
@@ -126,8 +138,34 @@ public class SettingsActivity extends AppCompatActivity {
         testConnectionButton.setOnClickListener(v -> testConnection());
         selectSheetButton.setOnClickListener(v -> fetchAndShowSheetSelection());
         jumpToCardButton.setOnClickListener(v -> showJumpToCardDialog());
-        resetProgressButton.setOnClickListener(v -> resetProgress());
         backToFlashcardsButton.setOnClickListener(v -> finish());
+
+        // TTS speed SeekBar listener
+        ttsSpeedSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                float speed = progressToSpeed(progress);
+                ttsSpeedValueText.setText(String.format(Locale.US, "%.1fx", speed));
+
+                // Apply to TTS engine
+                if (textToSpeech != null) {
+                    textToSpeech.setSpeechRate(speed);
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                // Save to SharedPreferences
+                float speed = progressToSpeed(seekBar.getProgress());
+                prefs.edit().putFloat(KEY_TTS_SPEED, speed).apply();
+                Log.d(TAG, "TTS speed saved: " + speed);
+            }
+        });
+
+        testTtsButton.setOnClickListener(v -> testTtsVoice());
     }
 
     private void saveApiUrl() {
@@ -341,36 +379,65 @@ public class SettingsActivity extends AppCompatActivity {
                 .show();
     }
 
-    private void resetProgress() {
-        new AlertDialog.Builder(this)
-                .setTitle("Reset Progress")
-                .setMessage("Are you sure you want to reset to Card 1?")
-                .setPositiveButton("Reset", (dialog, which) -> {
-                    prefs.edit().putInt(KEY_CARD_NUMBER, 1).apply();
-                    currentCardText.setText("Progress: Card 1");
+    // ==================== TTS Methods ====================
 
-                    // Save to Google Sheets (if API is configured)
-                    if (apiService != null) {
-                        String sheetName = prefs.getString(KEY_SHEET_NAME, "Sheet1");
-                        apiService.saveProgress("saveProgress", 1, sheetName)
-                                .enqueue(new Callback<com.google.gson.JsonObject>() {
-                                    @Override
-                                    public void onResponse(Call<com.google.gson.JsonObject> call, Response<com.google.gson.JsonObject> response) {
-                                        if (response.isSuccessful()) {
-                                            Log.d(TAG, "Progress reset saved to Google Sheets");
-                                        }
-                                    }
+    private void initializeTTS() {
+        textToSpeech = new TextToSpeech(this, status -> {
+            if (status == TextToSpeech.SUCCESS) {
+                int result = textToSpeech.setLanguage(Locale.JAPANESE);
+                if (result == TextToSpeech.LANG_MISSING_DATA ||
+                    result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                    textToSpeech.setLanguage(Locale.ENGLISH);
+                }
+                testTtsButton.setEnabled(true);
+                Log.d(TAG, "TTS initialized in Settings");
+            } else {
+                testTtsButton.setEnabled(false);
+                Log.e(TAG, "TTS initialization failed in Settings");
+            }
+        });
+    }
 
-                                    @Override
-                                    public void onFailure(Call<com.google.gson.JsonObject> call, Throwable t) {
-                                        Log.e(TAG, "Failed to save reset to Google Sheets", t);
-                                    }
-                                });
-                    }
+    private void loadTtsSettings() {
+        float savedSpeed = prefs.getFloat(KEY_TTS_SPEED, 1.0f);
+        int progress = speedToProgress(savedSpeed);
+        ttsSpeedSeekBar.setProgress(progress);
+        ttsSpeedValueText.setText(String.format(Locale.US, "%.1fx", savedSpeed));
 
-                    Toast.makeText(this, "Progress reset to Card 1", Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        if (textToSpeech != null) {
+            textToSpeech.setSpeechRate(savedSpeed);
+        }
+
+        Log.d(TAG, "Loaded TTS speed: " + savedSpeed);
+    }
+
+    private float progressToSpeed(int progress) {
+        // Progress: 0-150 -> Speed: 0.5-2.0
+        // 0 -> 0.5, 50 -> 1.0, 150 -> 2.0
+        return 0.5f + (progress / 100.0f);
+    }
+
+    private int speedToProgress(float speed) {
+        // Speed: 0.5-2.0 -> Progress: 0-150
+        return (int) ((speed - 0.5f) * 100);
+    }
+
+    private void testTtsVoice() {
+        if (textToSpeech == null) {
+            Toast.makeText(this, "TTS not available", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String testText = "こんにちは。これはテストです。Hello, this is a test.";
+        textToSpeech.speak(testText, TextToSpeech.QUEUE_FLUSH, null, null);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (textToSpeech != null) {
+            textToSpeech.stop();
+            textToSpeech.shutdown();
+        }
     }
 }
