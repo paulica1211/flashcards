@@ -125,7 +125,7 @@ Apply same changes as portrait layout.
 
 ### 1. Model Changes
 
-File: `app/src/main/java/com/flashcardapp/models/Flashcard.java`
+Fi `app/src/main/java/com/flashcardapp/models/Flashcard.java`
 
 ```java
 // Add field
@@ -151,7 +151,7 @@ Add `pronunciationText` TextView above `frontSideText` as shown in UI Design sec
 
 ### 3. Activity Changes
 
-File: `app/src/main/java/com/flashcardapp/ui/FlashcardActivity.java`
+Fi `app/src/main/java/com/flashcardapp/ui/FlashcardActivity.java`
 
 #### Add View Reference
 
@@ -193,7 +193,7 @@ private void displayFlashcard(Flashcard flashcard) {
 
 ### 4. Google Apps Script Changes
 
-File: `Code.gs` (in Google Apps Script project)
+Fi `Code.gs` (in Google Apps Script project)
 
 Update `getFlashcard()` function to include D column:
 

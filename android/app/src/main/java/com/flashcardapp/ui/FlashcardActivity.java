@@ -99,7 +99,9 @@ public class FlashcardActivity extends AppCompatActivity {
     private MaterialButton colorBlueButton;
     private MaterialButton colorYellowButton;
     private MaterialButton colorBlackButton;
-    private android.widget.LinearLayout colorPalette;
+    private MaterialButton boldButton;
+    private MaterialButton underlineButton;
+    private android.widget.HorizontalScrollView colorPalette;
     private android.widget.LinearLayout editControls;
     private ProgressBar progressBar;
 
@@ -196,6 +198,8 @@ public class FlashcardActivity extends AppCompatActivity {
         colorBlueButton = findViewById(R.id.colorBlueButton);
         colorYellowButton = findViewById(R.id.colorYellowButton);
         colorBlackButton = findViewById(R.id.colorBlackButton);
+        boldButton = findViewById(R.id.boldButton);
+        underlineButton = findViewById(R.id.underlineButton);
         colorPalette = findViewById(R.id.colorPalette);
         editControls = findViewById(R.id.editControls);
         progressBar = findViewById(R.id.progressBar);
@@ -265,10 +269,14 @@ public class FlashcardActivity extends AppCompatActivity {
         cancelEditButton.setOnClickListener(v -> cancelEdit());
 
         // Color palette buttons
-        colorRedButton.setOnClickListener(v -> applyColor("#FF0000"));
+        colorRedButton.setOnClickListener(v -> applyColor("#9C1E3B"));  // Red Berry
         colorBlueButton.setOnClickListener(v -> applyColor("#0000FF"));
-        colorYellowButton.setOnClickListener(v -> applyColor("#FFD700"));
+        colorYellowButton.setOnClickListener(v -> applyColor("#7F00FF"));  // Purple
         colorBlackButton.setOnClickListener(v -> applyColor("#000000"));
+
+        // Style buttons
+        boldButton.setOnClickListener(v -> applyBold());
+        underlineButton.setOnClickListener(v -> applyUnderline());
     }
 
     private void openSettings() {
@@ -1309,9 +1317,19 @@ public class FlashcardActivity extends AppCompatActivity {
         playButton.setVisibility(View.GONE);
         deleteAudioButton.setVisibility(View.GONE);
 
-        // Hide navigation bar completely
+        // Hide navigation bar and importance section completely
         findViewById(R.id.navigationButtons).setVisibility(View.GONE);
         findViewById(R.id.audioControls).setVisibility(View.GONE);
+
+        // Hide importance container (portrait) or label (landscape)
+        android.view.View importanceContainer = findViewById(R.id.importanceContainer);
+        if (importanceContainer != null) {
+            importanceContainer.setVisibility(View.GONE);
+        }
+        android.view.View importanceLabel = findViewById(R.id.importanceLabel);
+        if (importanceLabel != null) {
+            importanceLabel.setVisibility(View.GONE);
+        }
 
         // Adjust flashcard container to be above editControls
         android.widget.RelativeLayout.LayoutParams params =
@@ -1325,14 +1343,77 @@ public class FlashcardActivity extends AppCompatActivity {
             frontSideEditText.setVisibility(View.VISIBLE);
             frontSideEditText.setText(frontSideText.getText());
             frontSideEditText.requestFocus();
+            // Disable text selection menu
+            disableTextSelectionMenu(frontSideEditText);
         } else {
             backSideText.setVisibility(View.GONE);
             backSideEditText.setVisibility(View.VISIBLE);
             backSideEditText.setText(backSideText.getText());
             backSideEditText.requestFocus();
+            // Disable text selection menu
+            disableTextSelectionMenu(backSideEditText);
         }
 
         Toast.makeText(this, "Edit mode: Select text and choose a color", Toast.LENGTH_LONG).show();
+    }
+
+    private void disableTextSelectionMenu(android.widget.EditText editText) {
+        // Keep the ActionMode but remove only the translate menu item
+        editText.setCustomSelectionActionModeCallback(new android.view.ActionMode.Callback() {
+            @Override
+            public boolean onCreateActionMode(android.view.ActionMode mode, android.view.Menu menu) {
+                // Return true to allow the action mode with default items
+                return true;
+            }
+
+            @Override
+            public boolean onPrepareActionMode(android.view.ActionMode mode, android.view.Menu menu) {
+                // Remove only the translate menu item
+                for (int i = menu.size() - 1; i >= 0; i--) {
+                    android.view.MenuItem item = menu.getItem(i);
+                    CharSequence title = item.getTitle();
+                    if (title != null && (title.toString().toLowerCase().contains("translate")
+                        || title.toString().toLowerCase().contains("翻訳"))) {
+                        menu.removeItem(item.getItemId());
+                    }
+                }
+                return true;
+            }
+
+            @Override
+            public boolean onActionItemClicked(android.view.ActionMode mode, android.view.MenuItem item) {
+                return false;
+            }
+
+            @Override
+            public void onDestroyActionMode(android.view.ActionMode mode) {
+            }
+        });
+
+        // For Android 6.0+ (API 23+), also customize the insertion handle menu
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            editText.setCustomInsertionActionModeCallback(new android.view.ActionMode.Callback() {
+                @Override
+                public boolean onCreateActionMode(android.view.ActionMode mode, android.view.Menu menu) {
+                    return true;
+                }
+
+                @Override
+                public boolean onPrepareActionMode(android.view.ActionMode mode, android.view.Menu menu) {
+                    menu.clear();
+                    return true;
+                }
+
+                @Override
+                public boolean onActionItemClicked(android.view.ActionMode mode, android.view.MenuItem item) {
+                    return false;
+                }
+
+                @Override
+                public void onDestroyActionMode(android.view.ActionMode mode) {
+                }
+            });
+        }
     }
 
     private void cancelEdit() {
@@ -1341,6 +1422,15 @@ public class FlashcardActivity extends AppCompatActivity {
 
         // Hide keyboard
         hideKeyboard();
+
+        // Clear focus and selection from EditText
+        if (isShowingFront) {
+            frontSideEditText.clearFocus();
+            frontSideEditText.setSelection(0);
+        } else {
+            backSideEditText.clearFocus();
+            backSideEditText.setSelection(0);
+        }
 
         // Hide edit controls and color palette
         editControls.setVisibility(View.GONE);
@@ -1363,6 +1453,16 @@ public class FlashcardActivity extends AppCompatActivity {
         // Show navigation bars
         findViewById(R.id.navigationButtons).setVisibility(View.VISIBLE);
         findViewById(R.id.audioControls).setVisibility(View.VISIBLE);
+
+        // Show importance container (portrait) or label (landscape)
+        android.view.View importanceContainer = findViewById(R.id.importanceContainer);
+        if (importanceContainer != null) {
+            importanceContainer.setVisibility(View.VISIBLE);
+        }
+        android.view.View importanceLabel = findViewById(R.id.importanceLabel);
+        if (importanceLabel != null) {
+            importanceLabel.setVisibility(View.VISIBLE);
+        }
 
         // Restore flashcard container to be above audioControls
         android.widget.RelativeLayout.LayoutParams params =
@@ -1400,6 +1500,49 @@ public class FlashcardActivity extends AppCompatActivity {
         editText.setSelection(end); // Move cursor to end of selection
 
         Toast.makeText(this, "Color applied", Toast.LENGTH_SHORT).show();
+    }
+
+    private void applyBold() {
+        android.widget.EditText editText = isShowingFront ? frontSideEditText : backSideEditText;
+
+        int start = editText.getSelectionStart();
+        int end = editText.getSelectionEnd();
+
+        if (start >= end) {
+            Toast.makeText(this, "Please select text first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        android.text.SpannableString spannable = new android.text.SpannableString(editText.getText());
+        android.text.style.StyleSpan boldSpan =
+            new android.text.style.StyleSpan(android.graphics.Typeface.BOLD);
+        spannable.setSpan(boldSpan, start, end, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+        editText.setText(spannable);
+        editText.setSelection(end); // Move cursor to end of selection
+
+        Toast.makeText(this, "Bold applied", Toast.LENGTH_SHORT).show();
+    }
+
+    private void applyUnderline() {
+        android.widget.EditText editText = isShowingFront ? frontSideEditText : backSideEditText;
+
+        int start = editText.getSelectionStart();
+        int end = editText.getSelectionEnd();
+
+        if (start >= end) {
+            Toast.makeText(this, "Please select text first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        android.text.SpannableString spannable = new android.text.SpannableString(editText.getText());
+        android.text.style.UnderlineSpan underlineSpan = new android.text.style.UnderlineSpan();
+        spannable.setSpan(underlineSpan, start, end, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+        editText.setText(spannable);
+        editText.setSelection(end); // Move cursor to end of selection
+
+        Toast.makeText(this, "Underline applied", Toast.LENGTH_SHORT).show();
     }
 
     private void saveEdit() {

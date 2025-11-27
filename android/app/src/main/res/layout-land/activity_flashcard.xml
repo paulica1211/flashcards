@@ -28,6 +28,7 @@
 
         <!-- Importance Label -->
         <TextView
+            android:id="@+id/importanceLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Imp: "
@@ -122,69 +123,91 @@
 
     </LinearLayout>
 
-    <!-- Color Palette (Edit Mode Only) -->
-    <LinearLayout
+    <!-- Color Palette (Edit Mode Only) - Scrollable -->
+    <HorizontalScrollView
         android:id="@+id/colorPalette"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/topBar"
         android:layout_marginTop="2dp"
         android:layout_marginBottom="2dp"
-        android:orientation="horizontal"
-        android:gravity="center"
         android:paddingStart="8dp"
         android:paddingEnd="8dp"
         android:background="#E3F2FD"
+        android:scrollbars="none"
         android:visibility="gone">
 
-        <TextView
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Color: "
-            android:textSize="12sp"
-            android:textColor="#666666"
-            android:layout_marginEnd="4dp" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/colorRedButton"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:minWidth="36dp"
-            android:minHeight="36dp"
-            android:layout_marginEnd="3dp"
-            android:backgroundTint="#FF0000"
-            style="@style/Widget.MaterialComponents.Button" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/colorRedButton"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:minWidth="32dp"
+                android:minHeight="32dp"
+                android:layout_marginEnd="2dp"
+                android:backgroundTint="#9C1E3B"
+                style="@style/Widget.MaterialComponents.Button" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/colorBlueButton"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:minWidth="36dp"
-            android:minHeight="36dp"
-            android:layout_marginEnd="3dp"
-            android:backgroundTint="#0000FF"
-            style="@style/Widget.MaterialComponents.Button" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/colorBlueButton"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:minWidth="32dp"
+                android:minHeight="32dp"
+                android:layout_marginEnd="2dp"
+                android:backgroundTint="#0000FF"
+                style="@style/Widget.MaterialComponents.Button" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/colorYellowButton"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:minWidth="36dp"
-            android:minHeight="36dp"
-            android:layout_marginEnd="3dp"
-            android:backgroundTint="#FFD700"
-            style="@style/Widget.MaterialComponents.Button" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/colorYellowButton"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:minWidth="32dp"
+                android:minHeight="32dp"
+                android:layout_marginEnd="2dp"
+                android:backgroundTint="#7F00FF"
+                style="@style/Widget.MaterialComponents.Button" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/colorBlackButton"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:minWidth="36dp"
-            android:minHeight="36dp"
-            android:backgroundTint="#000000"
-            style="@style/Widget.MaterialComponents.Button" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/colorBlackButton"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:minWidth="32dp"
+                android:minHeight="32dp"
+                android:layout_marginEnd="2dp"
+                android:backgroundTint="#000000"
+                style="@style/Widget.MaterialComponents.Button" />
 
-    </LinearLayout>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/boldButton"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:minWidth="32dp"
+                android:minHeight="32dp"
+                android:layout_marginEnd="2dp"
+                android:text="B"
+                android:textStyle="bold"
+                android:textSize="14sp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/underlineButton"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:minWidth="32dp"
+                android:minHeight="32dp"
+                android:text="U"
+                android:textSize="14sp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+        </LinearLayout>
+
+    </HorizontalScrollView>
 
     <!-- Edit Mode Controls (replaces navigation buttons in edit mode) -->
     <LinearLayout
