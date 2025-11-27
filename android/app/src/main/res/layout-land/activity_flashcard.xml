@@ -92,6 +92,15 @@
             android:layout_marginEnd="4dp"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
+        <!-- Edit Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/editButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="✏️"
+            android:minWidth="40dp"
+            style="@style/Widget.MaterialComponents.Button.TextButton" />
+
         <!-- TTS Button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/ttsButton"
@@ -110,6 +119,106 @@
             android:text="⚙️"
             android:minWidth="40dp"
             style="@style/Widget.MaterialComponents.Button.TextButton" />
+
+    </LinearLayout>
+
+    <!-- Color Palette (Edit Mode Only) -->
+    <LinearLayout
+        android:id="@+id/colorPalette"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/topBar"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="2dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:background="#E3F2FD"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Color: "
+            android:textSize="12sp"
+            android:textColor="#666666"
+            android:layout_marginEnd="4dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/colorRedButton"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:minWidth="36dp"
+            android:minHeight="36dp"
+            android:layout_marginEnd="3dp"
+            android:backgroundTint="#FF0000"
+            style="@style/Widget.MaterialComponents.Button" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/colorBlueButton"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:minWidth="36dp"
+            android:minHeight="36dp"
+            android:layout_marginEnd="3dp"
+            android:backgroundTint="#0000FF"
+            style="@style/Widget.MaterialComponents.Button" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/colorYellowButton"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:minWidth="36dp"
+            android:minHeight="36dp"
+            android:layout_marginEnd="3dp"
+            android:backgroundTint="#FFD700"
+            style="@style/Widget.MaterialComponents.Button" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/colorBlackButton"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:minWidth="36dp"
+            android:minHeight="36dp"
+            android:backgroundTint="#000000"
+            style="@style/Widget.MaterialComponents.Button" />
+
+    </LinearLayout>
+
+    <!-- Edit Mode Controls (replaces navigation buttons in edit mode) -->
+    <LinearLayout
+        android:id="@+id/editControls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="0dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:background="#FFF9C4"
+        android:visibility="gone">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/saveEditButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="4dp"
+            android:text="💾 Save"
+            android:textSize="12sp"
+            style="@style/Widget.MaterialComponents.Button" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/cancelEditButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:text="✖ Cancel"
+            android:textSize="12sp"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
     </LinearLayout>
 
@@ -186,7 +295,7 @@
         android:id="@+id/flashcardContainer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/topBar"
+        android:layout_below="@id/colorPalette"
         android:layout_above="@id/navigationButtons"
         android:layout_marginTop="4dp"
         android:layout_marginBottom="4dp"
@@ -234,6 +343,19 @@
                     android:visibility="visible"
                     android:scrollbars="vertical" />
 
+                <!-- Front Side EditText (Edit Mode) -->
+                <EditText
+                    android:id="@+id/frontSideEditText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="18sp"
+                    android:textColor="#000000"
+                    android:lineSpacingMultiplier="1.3"
+                    android:visibility="gone"
+                    android:scrollbars="vertical"
+                    android:background="@android:color/transparent"
+                    android:textCursorDrawable="@null" />
+
                 <!-- Back Side Pronunciation (E column) -->
                 <TextView
                     android:id="@+id/backPronunciationText"
@@ -257,6 +379,19 @@
                     android:lineSpacingMultiplier="1.3"
                     android:visibility="gone"
                     android:scrollbars="vertical" />
+
+                <!-- Back Side EditText (Edit Mode) -->
+                <EditText
+                    android:id="@+id/backSideEditText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="18sp"
+                    android:textColor="#000000"
+                    android:lineSpacingMultiplier="1.3"
+                    android:visibility="gone"
+                    android:scrollbars="vertical"
+                    android:background="@android:color/transparent"
+                    android:textCursorDrawable="@null" />
 
             </LinearLayout>
 

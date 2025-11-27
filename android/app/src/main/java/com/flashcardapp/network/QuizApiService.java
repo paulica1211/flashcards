@@ -53,4 +53,13 @@ public interface QuizApiService {
             @Query("cardNumber") int cardNumber,
             @Query("sheetName") String sheetName
     );
+
+    @POST("exec")
+    Call<JsonObject> saveCardContent(
+            @Query("action") String action,
+            @Query("cardNumber") int cardNumber,
+            @Query("sheetName") String sheetName,
+            @Query("side") String side,
+            @Query("html") String htmlContent
+    );
 }

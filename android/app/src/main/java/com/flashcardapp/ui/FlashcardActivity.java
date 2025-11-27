@@ -79,8 +79,11 @@ public class FlashcardActivity extends AppCompatActivity {
     private TextView backSideText;
     private TextView frontPronunciationText;
     private TextView backPronunciationText;
+    private android.widget.EditText frontSideEditText;
+    private android.widget.EditText backSideEditText;
     private MaterialButton previousButton;
     private MaterialButton nextButton;
+    private MaterialButton editButton;
     private MaterialButton settingsButton;
     private MaterialButton ttsButton;
     private MaterialButton importance0Button;
@@ -90,6 +93,14 @@ public class FlashcardActivity extends AppCompatActivity {
     private MaterialButton recordButton;
     private MaterialButton playButton;
     private MaterialButton deleteAudioButton;
+    private MaterialButton saveEditButton;
+    private MaterialButton cancelEditButton;
+    private MaterialButton colorRedButton;
+    private MaterialButton colorBlueButton;
+    private MaterialButton colorYellowButton;
+    private MaterialButton colorBlackButton;
+    private android.widget.LinearLayout colorPalette;
+    private android.widget.LinearLayout editControls;
     private ProgressBar progressBar;
 
     // API
@@ -111,6 +122,7 @@ public class FlashcardActivity extends AppCompatActivity {
     private Flashcard currentFlashcard;
     private int currentCardNumber = 1;
     private boolean isShowingFront = true;
+    private boolean isEditMode = false;
 
     // Cache for prefetched cards
     private Map<Integer, Flashcard> cardCache = new HashMap<>();
@@ -164,8 +176,11 @@ public class FlashcardActivity extends AppCompatActivity {
         backSideText = findViewById(R.id.backSideText);
         frontPronunciationText = findViewById(R.id.frontPronunciationText);
         backPronunciationText = findViewById(R.id.backPronunciationText);
+        frontSideEditText = findViewById(R.id.frontSideEditText);
+        backSideEditText = findViewById(R.id.backSideEditText);
         previousButton = findViewById(R.id.previousButton);
         nextButton = findViewById(R.id.nextButton);
+        editButton = findViewById(R.id.editButton);
         settingsButton = findViewById(R.id.settingsButton);
         ttsButton = findViewById(R.id.ttsButton);
         importance0Button = findViewById(R.id.importance0Button);
@@ -175,6 +190,14 @@ public class FlashcardActivity extends AppCompatActivity {
         recordButton = findViewById(R.id.recordButton);
         playButton = findViewById(R.id.playButton);
         deleteAudioButton = findViewById(R.id.deleteAudioButton);
+        saveEditButton = findViewById(R.id.saveEditButton);
+        cancelEditButton = findViewById(R.id.cancelEditButton);
+        colorRedButton = findViewById(R.id.colorRedButton);
+        colorBlueButton = findViewById(R.id.colorBlueButton);
+        colorYellowButton = findViewById(R.id.colorYellowButton);
+        colorBlackButton = findViewById(R.id.colorBlackButton);
+        colorPalette = findViewById(R.id.colorPalette);
+        editControls = findViewById(R.id.editControls);
         progressBar = findViewById(R.id.progressBar);
     }
 
@@ -222,6 +245,7 @@ public class FlashcardActivity extends AppCompatActivity {
 
         previousButton.setOnClickListener(v -> loadPreviousCard());
         nextButton.setOnClickListener(v -> loadNextCard());
+        editButton.setOnClickListener(v -> toggleEditMode());
         settingsButton.setOnClickListener(v -> openSettings());
         ttsButton.setOnClickListener(v -> toggleTTS());
 
@@ -235,6 +259,16 @@ public class FlashcardActivity extends AppCompatActivity {
         recordButton.setOnClickListener(v -> toggleRecording());
         playButton.setOnClickListener(v -> togglePlayback());
         deleteAudioButton.setOnClickListener(v -> deleteAudio());
+
+        // Edit mode controls
+        saveEditButton.setOnClickListener(v -> saveEdit());
+        cancelEditButton.setOnClickListener(v -> cancelEdit());
+
+        // Color palette buttons
+        colorRedButton.setOnClickListener(v -> applyColor("#FF0000"));
+        colorBlueButton.setOnClickListener(v -> applyColor("#0000FF"));
+        colorYellowButton.setOnClickListener(v -> applyColor("#FFD700"));
+        colorBlackButton.setOnClickListener(v -> applyColor("#000000"));
     }
 
     private void openSettings() {
@@ -1231,6 +1265,260 @@ public class FlashcardActivity extends AppCompatActivity {
     private String stripHtmlTags(String html) {
         if (html == null || html.isEmpty()) return "";
         return Html.fromHtml(html, Html.FROM_HTML_MODE_COMPACT).toString().trim();
+    }
+
+    // ==================== Edit Mode Methods ====================
+
+    private void toggleEditMode() {
+        if (isEditMode) {
+            cancelEdit();
+        } else {
+            enterEditMode();
+        }
+    }
+
+    private void enterEditMode() {
+        if (currentFlashcard == null) {
+            Toast.makeText(this, "No card loaded", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        isEditMode = true;
+        editButton.setText("✖");
+
+        Log.d(TAG, "Entering edit mode");
+        Log.d(TAG, "editControls: " + editControls);
+        Log.d(TAG, "colorPalette: " + colorPalette);
+
+        // Show edit controls and color palette
+        editControls.setVisibility(View.VISIBLE);
+        colorPalette.setVisibility(View.VISIBLE);
+
+        Log.d(TAG, "Edit controls visibility: " + editControls.getVisibility());
+        Log.d(TAG, "Color palette visibility: " + colorPalette.getVisibility());
+
+        // Hide navigation and other controls
+        previousButton.setVisibility(View.GONE);
+        nextButton.setVisibility(View.GONE);
+        ttsButton.setVisibility(View.GONE);
+        importance0Button.setVisibility(View.GONE);
+        importance1Button.setVisibility(View.GONE);
+        importance2Button.setVisibility(View.GONE);
+        importance3Button.setVisibility(View.GONE);
+        recordButton.setVisibility(View.GONE);
+        playButton.setVisibility(View.GONE);
+        deleteAudioButton.setVisibility(View.GONE);
+
+        // Hide navigation bar completely
+        findViewById(R.id.navigationButtons).setVisibility(View.GONE);
+        findViewById(R.id.audioControls).setVisibility(View.GONE);
+
+        // Adjust flashcard container to be above editControls
+        android.widget.RelativeLayout.LayoutParams params =
+            (android.widget.RelativeLayout.LayoutParams) flashcardContainer.getLayoutParams();
+        params.addRule(android.widget.RelativeLayout.ABOVE, R.id.editControls);
+        flashcardContainer.setLayoutParams(params);
+
+        // Switch to EditText for the current side
+        if (isShowingFront) {
+            frontSideText.setVisibility(View.GONE);
+            frontSideEditText.setVisibility(View.VISIBLE);
+            frontSideEditText.setText(frontSideText.getText());
+            frontSideEditText.requestFocus();
+        } else {
+            backSideText.setVisibility(View.GONE);
+            backSideEditText.setVisibility(View.VISIBLE);
+            backSideEditText.setText(backSideText.getText());
+            backSideEditText.requestFocus();
+        }
+
+        Toast.makeText(this, "Edit mode: Select text and choose a color", Toast.LENGTH_LONG).show();
+    }
+
+    private void cancelEdit() {
+        isEditMode = false;
+        editButton.setText("✏️");
+
+        // Hide keyboard
+        hideKeyboard();
+
+        // Hide edit controls and color palette
+        editControls.setVisibility(View.GONE);
+        colorPalette.setVisibility(View.GONE);
+
+        // Show navigation and other controls
+        previousButton.setVisibility(View.VISIBLE);
+        nextButton.setVisibility(View.VISIBLE);
+        ttsButton.setVisibility(View.VISIBLE);
+        importance0Button.setVisibility(View.VISIBLE);
+        importance1Button.setVisibility(View.VISIBLE);
+        importance2Button.setVisibility(View.VISIBLE);
+        importance3Button.setVisibility(View.VISIBLE);
+        recordButton.setVisibility(View.VISIBLE);
+        playButton.setVisibility(View.VISIBLE);
+        if (getAudioFile(currentCardNumber).exists()) {
+            deleteAudioButton.setVisibility(View.VISIBLE);
+        }
+
+        // Show navigation bars
+        findViewById(R.id.navigationButtons).setVisibility(View.VISIBLE);
+        findViewById(R.id.audioControls).setVisibility(View.VISIBLE);
+
+        // Restore flashcard container to be above audioControls
+        android.widget.RelativeLayout.LayoutParams params =
+            (android.widget.RelativeLayout.LayoutParams) flashcardContainer.getLayoutParams();
+        params.addRule(android.widget.RelativeLayout.ABOVE, R.id.audioControls);
+        flashcardContainer.setLayoutParams(params);
+
+        // Switch back to TextView
+        if (isShowingFront) {
+            frontSideEditText.setVisibility(View.GONE);
+            frontSideText.setVisibility(View.VISIBLE);
+        } else {
+            backSideEditText.setVisibility(View.GONE);
+            backSideText.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void applyColor(String colorHex) {
+        android.widget.EditText editText = isShowingFront ? frontSideEditText : backSideEditText;
+
+        int start = editText.getSelectionStart();
+        int end = editText.getSelectionEnd();
+
+        if (start >= end) {
+            Toast.makeText(this, "Please select text first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        android.text.SpannableString spannable = new android.text.SpannableString(editText.getText());
+        android.text.style.ForegroundColorSpan colorSpan =
+            new android.text.style.ForegroundColorSpan(android.graphics.Color.parseColor(colorHex));
+        spannable.setSpan(colorSpan, start, end, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+        editText.setText(spannable);
+        editText.setSelection(end); // Move cursor to end of selection
+
+        Toast.makeText(this, "Color applied", Toast.LENGTH_SHORT).show();
+    }
+
+    private void saveEdit() {
+        if (currentFlashcard == null) return;
+
+        // Hide keyboard
+        hideKeyboard();
+
+        showLoading(true);
+
+        // Get the edited text
+        android.widget.EditText editText = isShowingFront ? frontSideEditText : backSideEditText;
+        android.text.Spanned spannedText = (android.text.Spanned) editText.getText();
+
+        // Convert to HTML
+        String htmlContent = spannableToHtml(spannedText);
+        String side = isShowingFront ? "front" : "back";
+
+        Log.d(TAG, "Saving " + side + " side HTML: " + htmlContent);
+
+        // Save to Google Sheets
+        SharedPreferences preferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        String sheetName = preferences.getString(KEY_SHEET_NAME, "Sheet1");
+
+        apiService.saveCardContent("saveCardContent", currentCardNumber, sheetName, side, htmlContent)
+                .enqueue(new Callback<com.google.gson.JsonObject>() {
+                    @Override
+                    public void onResponse(Call<com.google.gson.JsonObject> call, Response<com.google.gson.JsonObject> response) {
+                        showLoading(false);
+
+                        if (response.isSuccessful()) {
+                            Log.d(TAG, "Card content saved successfully");
+                            Toast.makeText(FlashcardActivity.this, "Saved to Google Sheets", Toast.LENGTH_SHORT).show();
+
+                            // Update current flashcard
+                            if (isShowingFront) {
+                                currentFlashcard.setFrontSide(htmlContent);
+                                frontSideText.setText(parseHtml(htmlContent));
+                            } else {
+                                currentFlashcard.setBackSide(htmlContent);
+                                backSideText.setText(parseHtml(htmlContent));
+                            }
+
+                            // Update cache
+                            cardCache.put(currentCardNumber, currentFlashcard);
+
+                            // Exit edit mode
+                            cancelEdit();
+                        } else {
+                            Log.w(TAG, "Failed to save card content");
+                            Toast.makeText(FlashcardActivity.this, "Failed to save", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<com.google.gson.JsonObject> call, Throwable t) {
+                        showLoading(false);
+                        Log.e(TAG, "Error saving card content", t);
+                        Toast.makeText(FlashcardActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    private void hideKeyboard() {
+        android.view.View view = getCurrentFocus();
+        if (view != null) {
+            android.view.inputmethod.InputMethodManager imm =
+                (android.view.inputmethod.InputMethodManager) getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+            }
+        }
+    }
+
+    private String spannableToHtml(android.text.Spanned spanned) {
+        StringBuilder html = new StringBuilder();
+        String text = spanned.toString();
+        int next;
+
+        for (int i = 0; i < text.length(); i = next) {
+            next = spanned.nextSpanTransition(i, text.length(), android.text.style.CharacterStyle.class);
+
+            // Get all spans affecting this range
+            android.text.style.CharacterStyle[] spans = spanned.getSpans(i, next, android.text.style.CharacterStyle.class);
+
+            String segment = text.substring(i, next);
+
+            // Apply styles to this segment
+            boolean hasBold = false;
+            boolean hasItalic = false;
+            boolean hasUnderline = false;
+            String color = null;
+
+            for (android.text.style.CharacterStyle span : spans) {
+                if (span instanceof android.text.style.StyleSpan) {
+                    android.text.style.StyleSpan styleSpan = (android.text.style.StyleSpan) span;
+                    if (styleSpan.getStyle() == android.graphics.Typeface.BOLD) {
+                        hasBold = true;
+                    } else if (styleSpan.getStyle() == android.graphics.Typeface.ITALIC) {
+                        hasItalic = true;
+                    }
+                } else if (span instanceof android.text.style.UnderlineSpan) {
+                    hasUnderline = true;
+                } else if (span instanceof android.text.style.ForegroundColorSpan) {
+                    android.text.style.ForegroundColorSpan colorSpan = (android.text.style.ForegroundColorSpan) span;
+                    color = String.format("#%06X", (0xFFFFFF & colorSpan.getForegroundColor()));
+                }
+            }
+
+            // Build HTML for this segment
+            if (hasBold) segment = "<b>" + segment + "</b>";
+            if (hasItalic) segment = "<i>" + segment + "</i>";
+            if (hasUnderline) segment = "<u>" + segment + "</u>";
+            if (color != null) segment = "<font color=\"" + color + "\">" + segment + "</font>";
+
+            html.append(segment);
+        }
+
+        return html.toString();
     }
 
     @Override

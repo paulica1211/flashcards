@@ -225,6 +225,8 @@ function doPost(e) {
         return saveProgress(e);
       case 'saveImportance':
         return saveImportance(e);
+      case 'saveCardContent':
+        return saveCardContent(e);
       default:
         return errorResponse('Unknown action: ' + action);
     }
@@ -396,6 +398,218 @@ function convertRichTextToHtml(plainText, richTextValue) {
   }
 
   return html || text;
+}
+
+/**
+ * Save card content (with rich text formatting) back to Google Sheets
+ */
+function saveCardContent(e) {
+  const cardNumber = parseInt(e.parameter.cardNumber);
+  const sheetName = e.parameter.sheetName || SHEET_NAME;
+  const side = e.parameter.side; // "front" or "back"
+  const htmlContent = e.parameter.html;
+
+  if (!cardNumber || cardNumber < 1) {
+    return errorResponse('Invalid card number');
+  }
+
+  if (!side || (side !== 'front' && side !== 'back')) {
+    return errorResponse('Invalid side (must be "front" or "back")');
+  }
+
+  if (!htmlContent) {
+    return errorResponse('No HTML content provided');
+  }
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+  if (!sheet) {
+    return errorResponse('Sheet not found: ' + sheetName);
+  }
+
+  // Count only rows with data in the front column
+  const lastRow = sheet.getLastRow();
+  const frontColumn = sheet.getRange(FIRST_ROW, FRONT_COLUMN, lastRow - FIRST_ROW + 1, 1).getValues();
+  let totalCards = 0;
+  for (let i = 0; i < frontColumn.length; i++) {
+    if (frontColumn[i][0] && frontColumn[i][0].toString().trim() !== '') {
+      totalCards++;
+    }
+  }
+
+  if (cardNumber > totalCards) {
+    return errorResponse('Card number exceeds total cards');
+  }
+
+  const row = FIRST_ROW + cardNumber - 1;
+  const column = (side === 'front') ? FRONT_COLUMN : BACK_COLUMN;
+
+  try {
+    // Convert HTML to RichTextValue
+    const richTextValue = htmlToRichText(htmlContent);
+
+    // Save to sheet
+    sheet.getRange(row, column).setRichTextValue(richTextValue);
+
+    Logger.log('Saved ' + side + ' content for card ' + cardNumber + ' in sheet ' + sheetName);
+    return jsonResponse({ success: true });
+  } catch (error) {
+    Logger.log('Error saving card content: ' + error.toString());
+    return errorResponse('Failed to save: ' + error.toString());
+  }
+}
+
+/**
+ * Convert HTML to RichTextValue for Google Sheets
+ * Supports: <b>, <i>, <u>, <font color="">
+ */
+function htmlToRichText(html) {
+  // Strip HTML tags and get plain text
+  const plainText = html.replace(/<[^>]*>/g, '');
+
+  // Create RichTextValue builder
+  const builder = SpreadsheetApp.newRichTextValue().setText(plainText);
+
+  // Parse HTML and apply styles
+  let currentPos = 0;
+  const segments = parseHtmlSegments(html);
+
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i];
+    const startPos = currentPos;
+    const endPos = currentPos + segment.text.length;
+
+    if (segment.text.length > 0) {
+      let style = SpreadsheetApp.newTextStyle();
+
+      // Apply bold
+      if (segment.bold) {
+        style = style.setBold(true);
+      }
+
+      // Apply italic
+      if (segment.italic) {
+        style = style.setItalic(true);
+      }
+
+      // Apply underline
+      if (segment.underline) {
+        style = style.setUnderline(true);
+      }
+
+      // Apply color
+      if (segment.color) {
+        style = style.setForegroundColor(segment.color);
+      }
+
+      builder.setTextStyle(startPos, endPos, style.build());
+      currentPos = endPos;
+    }
+  }
+
+  return builder.build();
+}
+
+/**
+ * Parse HTML into segments with style information
+ */
+function parseHtmlSegments(html) {
+  const segments = [];
+  const stack = []; // Stack to track nested tags
+  let currentText = '';
+  let currentStyles = { bold: false, italic: false, underline: false, color: null };
+
+  // Simple HTML parser using regex
+  const tagRegex = /<(\/?)(b|i|u|font)([^>]*)>/gi;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = tagRegex.exec(html)) !== null) {
+    const isClosing = match[1] === '/';
+    const tagName = match[2].toLowerCase();
+    const attributes = match[3];
+
+    // Add text before this tag
+    const textBefore = html.substring(lastIndex, match.index);
+    if (textBefore) {
+      // Strip any remaining tags from text
+      const cleanText = textBefore.replace(/<[^>]*>/g, '');
+      if (cleanText) {
+        segments.push({
+          text: cleanText,
+          bold: currentStyles.bold,
+          italic: currentStyles.italic,
+          underline: currentStyles.underline,
+          color: currentStyles.color
+        });
+      }
+    }
+
+    // Update current styles
+    if (!isClosing) {
+      // Opening tag
+      if (tagName === 'b') {
+        stack.push('bold');
+        currentStyles.bold = true;
+      } else if (tagName === 'i') {
+        stack.push('italic');
+        currentStyles.italic = true;
+      } else if (tagName === 'u') {
+        stack.push('underline');
+        currentStyles.underline = true;
+      } else if (tagName === 'font') {
+        // Extract color attribute
+        const colorMatch = attributes.match(/color\s*=\s*["']([^"']*)["']/i);
+        if (colorMatch) {
+          stack.push({ tag: 'color', value: currentStyles.color });
+          currentStyles.color = colorMatch[1];
+        }
+      }
+    } else {
+      // Closing tag
+      if (tagName === 'b') {
+        currentStyles.bold = false;
+        // Remove from stack
+        const index = stack.lastIndexOf('bold');
+        if (index !== -1) stack.splice(index, 1);
+      } else if (tagName === 'i') {
+        currentStyles.italic = false;
+        const index = stack.lastIndexOf('italic');
+        if (index !== -1) stack.splice(index, 1);
+      } else if (tagName === 'u') {
+        currentStyles.underline = false;
+        const index = stack.lastIndexOf('underline');
+        if (index !== -1) stack.splice(index, 1);
+      } else if (tagName === 'font') {
+        // Pop color from stack
+        for (let i = stack.length - 1; i >= 0; i--) {
+          if (typeof stack[i] === 'object' && stack[i].tag === 'color') {
+            currentStyles.color = stack[i].value;
+            stack.splice(i, 1);
+            break;
+          }
+        }
+      }
+    }
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining text
+  const remainingText = html.substring(lastIndex);
+  if (remainingText) {
+    const cleanText = remainingText.replace(/<[^>]*>/g, '');
+    if (cleanText) {
+      segments.push({
+        text: cleanText,
+        bold: currentStyles.bold,
+        italic: currentStyles.italic,
+        underline: currentStyles.underline,
+        color: currentStyles.color
+      });
+    }
+  }
+
+  return segments;
 }
 
 /**
