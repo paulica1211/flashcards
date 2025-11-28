@@ -1298,6 +1298,10 @@ public class FlashcardActivity extends AppCompatActivity {
         Log.d(TAG, "editControls: " + editControls);
         Log.d(TAG, "colorPalette: " + colorPalette);
 
+        // Disable swipe gestures in edit mode
+        flashcardContainer.setOnTouchListener(null);
+        scrollView.setOnTouchListener(null);
+
         // Show edit controls and color palette
         editControls.setVisibility(View.VISIBLE);
         colorPalette.setVisibility(View.VISIBLE);
@@ -1431,6 +1435,14 @@ public class FlashcardActivity extends AppCompatActivity {
             backSideEditText.clearFocus();
             backSideEditText.setSelection(0);
         }
+
+        // Re-enable swipe gestures
+        View.OnTouchListener swipeListener = (v, event) -> {
+            gestureDetector.onTouchEvent(event);
+            return false;
+        };
+        flashcardContainer.setOnTouchListener(swipeListener);
+        scrollView.setOnTouchListener(swipeListener);
 
         // Hide edit controls and color palette
         editControls.setVisibility(View.GONE);
