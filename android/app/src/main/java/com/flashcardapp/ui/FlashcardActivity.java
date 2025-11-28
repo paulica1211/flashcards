@@ -265,8 +265,8 @@ public class FlashcardActivity extends AppCompatActivity {
         deleteAudioButton.setOnClickListener(v -> deleteAudio());
 
         // Edit mode controls
-        saveEditButton.setOnClickListener(v -> saveEdit());
-        cancelEditButton.setOnClickListener(v -> cancelEdit());
+        saveEditButton.setOnClickListener(v -> showSaveConfirmation());
+        cancelEditButton.setOnClickListener(v -> showCancelConfirmation());
 
         // Color palette buttons
         colorRedButton.setOnClickListener(v -> applyColor("#9C1E3B"));  // Red Berry
@@ -1279,7 +1279,7 @@ public class FlashcardActivity extends AppCompatActivity {
 
     private void toggleEditMode() {
         if (isEditMode) {
-            cancelEdit();
+            showCancelConfirmation();
         } else {
             enterEditMode();
         }
@@ -1418,6 +1418,28 @@ public class FlashcardActivity extends AppCompatActivity {
                 }
             });
         }
+    }
+
+    private void showSaveConfirmation() {
+        new AlertDialog.Builder(this)
+                .setTitle("Save Changes")
+                .setMessage("Save edited contents to Google Sheets?")
+                .setPositiveButton("Save", (dialog, which) -> {
+                    saveEdit();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void showCancelConfirmation() {
+        new AlertDialog.Builder(this)
+                .setTitle("Discard Changes")
+                .setMessage("Edited contents will be discarded. Continue?")
+                .setPositiveButton("Discard", (dialog, which) -> {
+                    cancelEdit();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private void cancelEdit() {
