@@ -578,13 +578,20 @@ public class FlashcardActivity extends AppCompatActivity {
         backSideText.setVisibility(View.GONE);
         backSideExtraText.setVisibility(View.GONE);
 
-        // Show front pronunciation only (D column)
+        // Show front pronunciation only (C column)
         if (frontPronunciation != null && !frontPronunciation.isEmpty()) {
             frontPronunciationText.setVisibility(View.VISIBLE);
         } else {
             frontPronunciationText.setVisibility(View.GONE);
         }
         backPronunciationText.setVisibility(View.GONE);
+
+        // Show front extra text only (E column)
+        if (frontSideExtra != null && !frontSideExtra.isEmpty()) {
+            frontSideExtraText.setVisibility(View.VISIBLE);
+        } else {
+            frontSideExtraText.setVisibility(View.GONE);
+        }
 
         // Reset any animations for all text elements
         frontSideText.setAlpha(1.0f);
