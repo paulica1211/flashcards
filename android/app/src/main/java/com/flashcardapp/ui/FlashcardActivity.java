@@ -79,6 +79,8 @@ public class FlashcardActivity extends AppCompatActivity {
     private TextView backSideText;
     private TextView frontPronunciationText;
     private TextView backPronunciationText;
+    private TextView frontSideExtraText;
+    private TextView backSideExtraText;
     private android.widget.EditText frontSideEditText;
     private android.widget.EditText backSideEditText;
     private MaterialButton previousButton;
@@ -178,6 +180,8 @@ public class FlashcardActivity extends AppCompatActivity {
         backSideText = findViewById(R.id.backSideText);
         frontPronunciationText = findViewById(R.id.frontPronunciationText);
         backPronunciationText = findViewById(R.id.backPronunciationText);
+        frontSideExtraText = findViewById(R.id.frontSideExtraText);
+        backSideExtraText = findViewById(R.id.backSideExtraText);
         frontSideEditText = findViewById(R.id.frontSideEditText);
         backSideEditText = findViewById(R.id.backSideEditText);
         previousButton = findViewById(R.id.previousButton);
@@ -537,11 +541,30 @@ public class FlashcardActivity extends AppCompatActivity {
         String frontPronunciation = flashcard.getFrontPronunciation();
         if (frontPronunciation != null && !frontPronunciation.isEmpty()) {
             frontPronunciationText.setText(frontPronunciation);
+        } else {
+            frontPronunciationText.setText("");
         }
 
         String backPronunciation = flashcard.getBackPronunciation();
         if (backPronunciation != null && !backPronunciation.isEmpty()) {
             backPronunciationText.setText(backPronunciation);
+        } else {
+            backPronunciationText.setText("");
+        }
+
+        // Set extra text
+        String frontSideExtra = flashcard.getFrontSideExtra();
+        if (frontSideExtra != null && !frontSideExtra.isEmpty()) {
+            frontSideExtraText.setText(frontSideExtra);
+        } else {
+            frontSideExtraText.setText("");
+        }
+
+        String backSideExtra = flashcard.getBackSideExtra();
+        if (backSideExtra != null && !backSideExtra.isEmpty()) {
+            backSideExtraText.setText(backSideExtra);
+        } else {
+            backSideExtraText.setText("");
         }
 
         // Pre-parse and cache text for TTS (improves TTS response time)
@@ -553,6 +576,7 @@ public class FlashcardActivity extends AppCompatActivity {
         isFlipping = false;
         frontSideText.setVisibility(View.VISIBLE);
         backSideText.setVisibility(View.GONE);
+        backSideExtraText.setVisibility(View.GONE);
 
         // Show front pronunciation only (D column)
         if (frontPronunciation != null && !frontPronunciation.isEmpty()) {
@@ -562,11 +586,19 @@ public class FlashcardActivity extends AppCompatActivity {
         }
         backPronunciationText.setVisibility(View.GONE);
 
-        // Reset any animations
+        // Reset any animations for all text elements
         frontSideText.setAlpha(1.0f);
         backSideText.setAlpha(1.0f);
         frontSideText.setRotationY(0);
         backSideText.setRotationY(0);
+        frontPronunciationText.setAlpha(1.0f);
+        backPronunciationText.setAlpha(1.0f);
+        frontPronunciationText.setRotationY(0);
+        backPronunciationText.setRotationY(0);
+        frontSideExtraText.setAlpha(1.0f);
+        backSideExtraText.setAlpha(1.0f);
+        frontSideExtraText.setRotationY(0);
+        backSideExtraText.setRotationY(0);
 
         // Update importance level UI
         updateImportanceButtons(flashcard.getImportance());
@@ -710,6 +742,10 @@ public class FlashcardActivity extends AppCompatActivity {
 
         AnimatorSet frontAnim;
         AnimatorSet backAnim;
+        AnimatorSet frontPronunciationAnim;
+        AnimatorSet backPronunciationAnim;
+        AnimatorSet frontExtraAnim;
+        AnimatorSet backExtraAnim;
 
         if (isShowingFront) {
             // Flip from front to back
@@ -724,17 +760,46 @@ public class FlashcardActivity extends AppCompatActivity {
 
             backSideText.setVisibility(View.VISIBLE);
 
-            // Show back pronunciation (E column), hide front pronunciation
-            frontPronunciationText.setVisibility(View.GONE);
+            // Animate pronunciation text
+            frontPronunciationAnim = (AnimatorSet) AnimatorInflater.loadAnimator(this, R.animator.card_flip_out);
+            frontPronunciationAnim.setTarget(frontPronunciationText);
+            frontPronunciationAnim.start();
+
             if (currentFlashcard != null && currentFlashcard.getBackPronunciation() != null
                     && !currentFlashcard.getBackPronunciation().isEmpty()) {
                 backPronunciationText.setVisibility(View.VISIBLE);
-            } else {
-                backPronunciationText.setVisibility(View.GONE);
+                backPronunciationAnim = (AnimatorSet) AnimatorInflater.loadAnimator(this, R.animator.card_flip_in);
+                backPronunciationAnim.setTarget(backPronunciationText);
+                backPronunciationAnim.start();
+            }
+
+            // Animate extra text
+            frontExtraAnim = (AnimatorSet) AnimatorInflater.loadAnimator(this, R.animator.card_flip_out);
+            frontExtraAnim.setTarget(frontSideExtraText);
+            frontExtraAnim.start();
+
+            if (currentFlashcard != null && currentFlashcard.getBackSideExtra() != null
+                    && !currentFlashcard.getBackSideExtra().isEmpty()) {
+                backSideExtraText.setVisibility(View.VISIBLE);
+                backExtraAnim = (AnimatorSet) AnimatorInflater.loadAnimator(this, R.animator.card_flip_in);
+                backExtraAnim.setTarget(backSideExtraText);
+                backExtraAnim.start();
             }
 
             frontSideText.postDelayed(() -> {
                 frontSideText.setVisibility(View.GONE);
+                frontPronunciationText.setVisibility(View.GONE);
+                frontSideExtraText.setVisibility(View.GONE);
+
+                if (currentFlashcard == null || currentFlashcard.getBackPronunciation() == null
+                        || currentFlashcard.getBackPronunciation().isEmpty()) {
+                    backPronunciationText.setVisibility(View.GONE);
+                }
+                if (currentFlashcard == null || currentFlashcard.getBackSideExtra() == null
+                        || currentFlashcard.getBackSideExtra().isEmpty()) {
+                    backSideExtraText.setVisibility(View.GONE);
+                }
+
                 isFlipping = false;
 
                 // Auto-play back side after flip animation
@@ -757,17 +822,46 @@ public class FlashcardActivity extends AppCompatActivity {
 
             frontSideText.setVisibility(View.VISIBLE);
 
-            // Show front pronunciation (D column), hide back pronunciation
-            backPronunciationText.setVisibility(View.GONE);
+            // Animate pronunciation text
+            backPronunciationAnim = (AnimatorSet) AnimatorInflater.loadAnimator(this, R.animator.card_flip_out);
+            backPronunciationAnim.setTarget(backPronunciationText);
+            backPronunciationAnim.start();
+
             if (currentFlashcard != null && currentFlashcard.getFrontPronunciation() != null
                     && !currentFlashcard.getFrontPronunciation().isEmpty()) {
                 frontPronunciationText.setVisibility(View.VISIBLE);
-            } else {
-                frontPronunciationText.setVisibility(View.GONE);
+                frontPronunciationAnim = (AnimatorSet) AnimatorInflater.loadAnimator(this, R.animator.card_flip_in);
+                frontPronunciationAnim.setTarget(frontPronunciationText);
+                frontPronunciationAnim.start();
+            }
+
+            // Animate extra text
+            backExtraAnim = (AnimatorSet) AnimatorInflater.loadAnimator(this, R.animator.card_flip_out);
+            backExtraAnim.setTarget(backSideExtraText);
+            backExtraAnim.start();
+
+            if (currentFlashcard != null && currentFlashcard.getFrontSideExtra() != null
+                    && !currentFlashcard.getFrontSideExtra().isEmpty()) {
+                frontSideExtraText.setVisibility(View.VISIBLE);
+                frontExtraAnim = (AnimatorSet) AnimatorInflater.loadAnimator(this, R.animator.card_flip_in);
+                frontExtraAnim.setTarget(frontSideExtraText);
+                frontExtraAnim.start();
             }
 
             backSideText.postDelayed(() -> {
                 backSideText.setVisibility(View.GONE);
+                backPronunciationText.setVisibility(View.GONE);
+                backSideExtraText.setVisibility(View.GONE);
+
+                if (currentFlashcard == null || currentFlashcard.getFrontPronunciation() == null
+                        || currentFlashcard.getFrontPronunciation().isEmpty()) {
+                    frontPronunciationText.setVisibility(View.GONE);
+                }
+                if (currentFlashcard == null || currentFlashcard.getFrontSideExtra() == null
+                        || currentFlashcard.getFrontSideExtra().isEmpty()) {
+                    frontSideExtraText.setVisibility(View.GONE);
+                }
+
                 isFlipping = false;
 
                 // Auto-play front side after flip animation
@@ -786,11 +880,19 @@ public class FlashcardActivity extends AppCompatActivity {
         frontSideText.setVisibility(View.VISIBLE);
         backSideText.setVisibility(View.GONE);
 
-        // Reset any animations
+        // Reset any animations for all text elements
         frontSideText.setAlpha(1.0f);
         backSideText.setAlpha(1.0f);
         frontSideText.setRotationY(0);
         backSideText.setRotationY(0);
+        frontPronunciationText.setAlpha(1.0f);
+        backPronunciationText.setAlpha(1.0f);
+        frontPronunciationText.setRotationY(0);
+        backPronunciationText.setRotationY(0);
+        frontSideExtraText.setAlpha(1.0f);
+        backSideExtraText.setAlpha(1.0f);
+        frontSideExtraText.setRotationY(0);
+        backSideExtraText.setRotationY(0);
     }
 
     private void saveCurrentProgress() {

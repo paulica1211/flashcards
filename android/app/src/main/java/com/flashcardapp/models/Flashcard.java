@@ -19,10 +19,16 @@ public class Flashcard {
     private int importance; // 0-3 importance level
 
     @SerializedName("frontPronunciation")
-    private String frontPronunciation; // D column - pronunciation for front side
+    private String frontPronunciation; // Column C - pronunciation for front side
 
     @SerializedName("backPronunciation")
-    private String backPronunciation; // E column - pronunciation for back side
+    private String backPronunciation; // Column D - pronunciation for back side
+
+    @SerializedName("frontSideExtra")
+    private String frontSideExtra; // Column E - extra text for front side
+
+    @SerializedName("backSideExtra")
+    private String backSideExtra; // Column F - extra text for back side
 
     // Getters
     public String getFrontSide() { return frontSide; }
@@ -32,6 +38,8 @@ public class Flashcard {
     public int getImportance() { return importance; }
     public String getFrontPronunciation() { return frontPronunciation; }
     public String getBackPronunciation() { return backPronunciation; }
+    public String getFrontSideExtra() { return frontSideExtra; }
+    public String getBackSideExtra() { return backSideExtra; }
 
     // Setters
     public void setFrontSide(String frontSide) { this.frontSide = frontSide; }
@@ -41,4 +49,6 @@ public class Flashcard {
     public void setImportance(int importance) { this.importance = importance; }
     public void setFrontPronunciation(String frontPronunciation) { this.frontPronunciation = frontPronunciation; }
     public void setBackPronunciation(String backPronunciation) { this.backPronunciation = backPronunciation; }
+    public void setFrontSideExtra(String frontSideExtra) { this.frontSideExtra = frontSideExtra; }
+    public void setBackSideExtra(String backSideExtra) { this.backSideExtra = backSideExtra; }
 }

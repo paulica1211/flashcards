@@ -5,9 +5,9 @@
  * 1. Open your Google Sheet with flashcards:
  *    - Column A = Front side
  *    - Column B = Back side
- *    - Column C = Importance (0-3)
- *    - Column D = Front pronunciation (optional)
- *    - Column E = Back pronunciation (optional)
+ *    - Column G = Importance (0-3)
+ *    - Column C = Front pronunciation (optional)
+ *    - Column D = Back pronunciation (optional)
  * 2. Go to Extensions → Apps Script
  * 3. Delete any existing code and paste this entire file
  * 4. Click Deploy → New deployment
@@ -22,9 +22,11 @@
 const SHEET_NAME = "Sheet1"; // Name of your sheet tab
 const FRONT_COLUMN = 1; // Column A (1-indexed)
 const BACK_COLUMN = 2;  // Column B
-const IMPORTANCE_COLUMN = 3; // Column C - Importance level (0-3)
-const FRONT_PRONUNCIATION_COLUMN = 4; // Column D - Pronunciation for front side
-const BACK_PRONUNCIATION_COLUMN = 5;  // Column E - Pronunciation for back side
+const IMPORTANCE_COLUMN = 7; // Column G - Importance level (0-3)
+const FRONT_PRONUNCIATION_COLUMN = 3; // Column C - Pronunciation for front side
+const BACK_PRONUNCIATION_COLUMN = 4; // Column D - Pronunciation for back side
+const FRONT_EXTRA_COLUMN = 5; // Column E
+const BACK_EXTRA_COLUMN = 6;  // Column F
 const FIRST_ROW = 2;    // Start from row 2 (assuming row 1 has headers)
 
 // Settings sheet for tracking progress (optional)
@@ -94,6 +96,8 @@ function getFlashcard(e) {
   const importance = sheet.getRange(row, IMPORTANCE_COLUMN).getValue() || 0;
   const frontPronunciation = sheet.getRange(row, FRONT_PRONUNCIATION_COLUMN).getValue() || "";
   const backPronunciation = sheet.getRange(row, BACK_PRONUNCIATION_COLUMN).getValue() || "";
+  const frontSideExtra = sheet.getRange(row, FRONT_EXTRA_COLUMN).getValue() || "";
+  const backSideExtra = sheet.getRange(row, BACK_EXTRA_COLUMN).getValue() || "";
 
   // Get rich text formatting
   const frontRichText = sheet.getRange(row, FRONT_COLUMN).getRichTextValue();
@@ -106,7 +110,9 @@ function getFlashcard(e) {
     totalCards: totalCards,
     importance: parseInt(importance) || 0,
     frontPronunciation: frontPronunciation.toString(),
-    backPronunciation: backPronunciation.toString()
+    backPronunciation: backPronunciation.toString(),
+    frontSideExtra: frontSideExtra.toString(),
+    backSideExtra: backSideExtra.toString()
   };
 
   return jsonResponse(flashcard);
@@ -149,8 +155,8 @@ function getFlashcardBatch(e) {
   const startRow = FIRST_ROW + startCard - 1;
   const numRows = endCard - startCard + 1;
 
-  // Fetch all data at once for better performance (5 columns: front, back, importance, frontPronunciation, backPronunciation)
-  const data = sheet.getRange(startRow, FRONT_COLUMN, numRows, 5).getValues();
+  // Fetch all data at once for better performance (7 columns: front, back, frontPronunciation, backPronunciation, frontSideExtra, backSideExtra, importance)
+  const data = sheet.getRange(startRow, FRONT_COLUMN, numRows, 7).getValues();
   const richTextData = sheet.getRange(startRow, FRONT_COLUMN, numRows, 2).getRichTextValues();
 
   for (let i = 0; i < data.length; i++) {
@@ -159,9 +165,11 @@ function getFlashcardBatch(e) {
       backSide: convertRichTextToHtml(data[i][1], richTextData[i][1]),
       currentNum: startCard + i,
       totalCards: totalCards,
-      importance: parseInt(data[i][2]) || 0,
-      frontPronunciation: (data[i][3] || "").toString(),
-      backPronunciation: (data[i][4] || "").toString()
+      importance: parseInt(data[i][6]) || 0,
+      frontPronunciation: (data[i][2] || "").toString(),
+      backPronunciation: (data[i][3] || "").toString(),
+      frontSideExtra: (data[i][4] || "").toString(),
+      backSideExtra: (data[i][5] || "").toString()
     });
   }
 

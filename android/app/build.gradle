@@ -68,3 +68,9 @@ dependencies {
         }
     }
 }
+
+task printSdkDir {
+    doLast {
+        println "SDK Dir: ${android.sdkDirectory}"
+    }
+}

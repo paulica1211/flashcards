@@ -351,7 +351,7 @@
                 android:minHeight="300dp"
                 android:gravity="center_vertical">
 
-                <!-- Front Side Pronunciation (D column) -->
+                <!-- Front Side Pronunciation (C column) -->
                 <TextView
                     android:id="@+id/frontPronunciationText"
                     android:layout_width="match_parent"
@@ -387,7 +387,18 @@
                     android:background="@android:color/transparent"
                     android:textCursorDrawable="@null" />
 
-                <!-- Back Side Pronunciation (E column) -->
+                <!-- Front Side Extra Text (E column) -->
+                <TextView
+                    android:id="@+id/frontSideExtraText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:textColor="#999999"
+                    android:gravity="start"
+                    android:visibility="gone"
+                    android:layout_marginTop="4dp" />
+
+                <!-- Back Side Pronunciation (D column) -->
                 <TextView
                     android:id="@+id/backPronunciationText"
                     android:layout_width="match_parent"
@@ -423,6 +434,17 @@
                     android:scrollbars="vertical"
                     android:background="@android:color/transparent"
                     android:textCursorDrawable="@null" />
+
+                <!-- Back Side Extra Text (F column) -->
+                <TextView
+                    android:id="@+id/backSideExtraText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:textColor="#999999"
+                    android:gravity="start"
+                    android:visibility="gone"
+                    android:layout_marginTop="4dp" />
 
             </LinearLayout>
 
